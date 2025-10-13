@@ -2,7 +2,7 @@
 
 import React, { useState, FormEvent } from "react";
 
-export default function Page() {
+export default function LoginPage() {
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -14,7 +14,7 @@ export default function Page() {
     setLoading(true);
 
     try {
-      const res = await fetch("api/login/", {
+      const res = await fetch("/api/auth/login/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
