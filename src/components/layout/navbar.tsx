@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 
 export default function Navbar() {
   return (
@@ -6,7 +7,13 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left: Logo */}
         <div className="flex items-center gap-2">
-          <img src="/logo.svg" alt="Logo" className="w-8 h-8" />
+          <Image
+            src="/logo.svg"
+            alt="Logo"
+            width={32} // معادل w-8
+            height={32} // معادل h-8
+            priority
+          />
           <span className="text-xl font-semibold text-gray-800">MyApp</span>
         </div>
 
@@ -28,11 +35,14 @@ export default function Navbar() {
 
         {/* Right: Buttons */}
         <div className="flex items-center gap-3">
-          <button className="hidden sm:block px-4 py-2 text-gray-700 hover:text-gray-900 transition">
-            ورود
-          </button>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition">
-            ثبت‌نام
+          <button className="hidden sm:block px-4 my-2 text-gray-700 hover:text-gray-900 transition">
+            <Image
+              src="/icons/ProfileIcon.svg"
+              alt="Profile"
+              className="border-4 border-white rounded-full transform transition-transform duration-300 hover:scale-110"
+              width={50}
+              height={50}
+            />
           </button>
         </div>
       </div>

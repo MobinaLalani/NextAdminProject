@@ -1,26 +1,27 @@
 import { NextResponse } from "next/server";
+import { mockUsers } from "@/lib/mockUsers";
 
 export async function POST(req: Request) {
-  const body = await req.json();
-  const { username, password } = body;
+  const { username, password } = await req.json();
 
+  const userData = mockUsers.find(
+    (u) => u.username === username && u.password === password
+  );
 
-  if (username === "admin" && password === "1234") {
-    const token = "fake-jwt-token"; 
-    const res = NextResponse.json({ success: true, message: "Logged in" });
-
-    res.cookies.set("token", token, {
-      httpOnly: true,
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-      sameSite: "lax", 
-    });
-   
-    return res;
+  if (!userData) {
+    return NextResponse.json({ message: "invalidData" }, { status: 401 });
   }
 
-  return NextResponse.json(
-    { success: false, message: "Invalid credentials" },
-    { status: 401 }
-  );
+  const token = "fake-jwt-token";
+
+  const res = NextResponse.json({ success: true, message: "Logged in" });
+
+  res.cookies.set("token", token, {
+    httpOnly: true,
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+    sameSite: "lax",
+  });
+
+  return res;
 }
