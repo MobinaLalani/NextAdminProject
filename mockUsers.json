@@ -5,5 +5,12 @@
     "email": "mobina@gmail.com",
     "password": "1234567",
     "role": "ADMIN"
+  },
+  {
+    "id": 2,
+    "username": "egdf",
+    "email": "sdfggfh@gmail.com",
+    "password": "3454",
+    "role": "USER"
   }
 ]
