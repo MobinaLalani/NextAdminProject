@@ -1,0 +1,89 @@
+// app/api/auth/register/route.ts
+import { NextResponse } from "next/server";
+import { promises as fs } from "fs";
+import path from "path";
+
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  password: string;
+  role: string;
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { username, email, password, role } = body as {
+      username?: string;
+      email?: string;
+      password?: string;
+      role?: string;
+    };
+
+    if (!username || !email || !password || !role) {
+      return NextResponse.json(
+        { success: false, message: "تمام فیلدها الزامی هستند" },
+        { status: 400 }
+      );
+    }
+
+    const filePath = path.join(process.cwd(), "mockUsers.json");
+
+    // اگر فایل وجود نداشت، یک آرایه خالی ایجاد کن
+    try {
+      await fs.access(filePath);
+    } catch (accessErr) {
+      // اگر فایل نیست، بسازش
+      await fs.writeFile(filePath, "[]", "utf-8");
+    }
+
+    // خواندن محتوای فایل
+    const json = await fs.readFile(filePath, "utf-8");
+
+    let users: User[] = [];
+    try {
+      users = JSON.parse(json) as User[];
+      if (!Array.isArray(users)) {
+        // اگر فایل چیزی غیر از آرایه بود، ریستش کن
+        users = [];
+      }
+    } catch (parseErr) {
+      // فایل JSON خراب بود — برای جلوگیری از crash، آن را بازنشانی می‌کنیم
+      console.error("parse error reading mockUsers.json:", parseErr);
+      users = [];
+    }
+
+    // بررسی ایمیل تکراری
+    const emailExists = users.some((u) => u.email === email);
+    if (emailExists) {
+      return NextResponse.json(
+        { success: false, message: "ایمیل قبلا ثبت شده" },
+        { status: 400 }
+      );
+    }
+
+    // محاسبه id امن: اگر آرایه خالی است id = 1، در غیر اینصورت بیشترین id + 1
+    const maxId = users.reduce((acc, u) => (u.id > acc ? u.id : acc), 0);
+    const newUser: User = {
+      id: maxId + 1,
+      username,
+      email,
+      password, // توجه: در پروژۀ واقعی هش کن
+      role,
+    };
+
+    users.push(newUser);
+
+    // نوشتن فایل با pretty JSON
+    await fs.writeFile(filePath, JSON.stringify(users, null, 2), "utf-8");
+
+    return NextResponse.json({ success: true, user: newUser }, { status: 201 });
+  } catch (err) {
+    console.error("register error:", err);
+    return NextResponse.json(
+      { success: false, message: "خطا در ثبت نام — جزئیات در لاگ سرور" },
+      { status: 500 }
+    );
+  }
+}

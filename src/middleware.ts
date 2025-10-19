@@ -13,7 +13,7 @@ export function middleware(request: NextRequest) {
   }
 
 
-  const protectedRoutes = ["/dashboard", "/profile"];
+  const protectedRoutes = ["/dashboard", "/profile", "/landing"];
   if (protectedRoutes.some((route) => pathname.startsWith(route)) && !token) {
     const loginUrl = new URL("/", request.url);
     return NextResponse.redirect(loginUrl);
@@ -23,5 +23,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/dashboard/:path*", "/profile/:path*"],
+  matcher: ["/", "/dashboard/:path*", "/profile/:path*", "/landing"],
 };

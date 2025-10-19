@@ -1,19 +1,38 @@
+"use client";
 import React from "react";
 import Image from "next/image";
+import ProfileDropdown from "./ProfileDropdown";
 
 export default function Navbar() {
+  const handleLogout = async () => {
+    try {
+      const res = await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+
+      const data: { success: boolean; message?: string } = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Logout failed");
+      }
+
+      // ریدایرکت به لندینگ بعد از خروج
+      window.location.href = "/landing";
+    } catch (err) {
+      if (err instanceof Error) {
+        console.error("Logout error:", err.message);
+      } else {
+        console.error("Logout error: اتفاقی رخ داد");
+      }
+    }
+  };
+
   return (
-    <nav className="w-full bg-white shadow-sm border-b border-gray-200">
+    <nav className="w-full bg-white shadow-sm border-b border-gray-200 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left: Logo */}
         <div className="flex items-center gap-2">
-          <Image
-            src="/logo.svg"
-            alt="Logo"
-            width={32} // معادل w-8
-            height={32} // معادل h-8
-            priority
-          />
+          <Image src="/logo.svg" alt="Logo" width={32} height={32} priority />
           <span className="text-xl font-semibold text-gray-800">MyApp</span>
         </div>
 
@@ -33,18 +52,8 @@ export default function Navbar() {
           </a>
         </div>
 
-        {/* Right: Buttons */}
-        <div className="flex items-center gap-3">
-          <button className="hidden sm:block px-4 my-2 text-gray-700 hover:text-gray-900 transition">
-            <Image
-              src="/icons/ProfileIcon.svg"
-              alt="Profile"
-              className="border-4 border-white rounded-full transform transition-transform duration-300 hover:scale-110"
-              width={50}
-              height={50}
-            />
-          </button>
-        </div>
+        {/* Right: Profile */}
+        <ProfileDropdown onLogout={handleLogout} />
       </div>
     </nav>
   );
