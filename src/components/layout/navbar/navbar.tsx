@@ -28,13 +28,9 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="w-full bg-white shadow-sm border-b border-gray-200 relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Left: Logo */}
-        <div className="flex items-center gap-2">
-          <Image src="/logo.svg" alt="Logo" width={32} height={32} priority />
-          <span className="text-xl font-semibold text-gray-800">MyApp</span>
-        </div>
+    <nav className="  bg-gray-200 shadow-sm border-b border-gray-200 relative">
+      <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center  justify-between">
+
 
         {/* Middle: Links */}
         <div className="hidden md:flex items-center gap-6 text-gray-600">

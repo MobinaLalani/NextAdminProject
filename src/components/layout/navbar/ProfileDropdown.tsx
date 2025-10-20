@@ -25,7 +25,7 @@ export default function ProfileDropdown({ onLogout }: ProfileDropdownProps) {
   }, []);
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative " ref={dropdownRef} >
       <button
         onClick={() => setOpen((prev) => !prev)}
         className="focus:outline-none"

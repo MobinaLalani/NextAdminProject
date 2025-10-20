@@ -31,8 +31,6 @@ export default function RegisterPage() {
       if (!res.ok || !data.success) {
         throw new Error(data.message || "ثبت نام ناموفق بود");
       }
-
-      // بعد از ثبت نام → ریدایرکت به صفحه ورود
       router.push("/login");
     } catch (err) {
       if (err instanceof Error) {
