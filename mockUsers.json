@@ -4,13 +4,20 @@
     "username": "mobina",
     "email": "mobina@gmail.com",
     "password": "1234",
-    "role": "ADMIN"
+    "role": "admin"
   },
   {
     "id": 2,
-    "username": "egdf",
+    "username": "test",
     "email": "sdfggfh@gmail.com",
-    "password": "3454",
-    "role": "USER"
+    "password": "1234",
+    "role": "manager"
+  },
+  {
+    "id": 3,
+    "username": "mahsa",
+    "email": "test@gmail.com",
+    "password": "1234",
+    "role": "admin"
   }
 ]

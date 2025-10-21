@@ -2,9 +2,11 @@
 
 import React, { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useUserStore } from "@/store/userStore";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { setUser } = useUserStore(); // ✅ اضافه شد
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -16,7 +18,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login/", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -24,14 +26,20 @@ export default function LoginPage() {
         body: JSON.stringify({ username, password }),
       });
 
-      const data: { success: boolean; message?: string; token?: string } =
-        await res.json();
+      const data = await res.json();
 
       if (!res.ok || !data.success) {
         throw new Error(data.message || "Login failed");
       }
 
-      window.location.href = "/landing";
+      // ✅ ذخیره اطلاعات کاربر در Zustand
+      setUser(data.user);
+
+      // ✅ ذخیره در localStorage برای حفظ بعد از رفرش
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // ✅ انتقال به صفحه landing
+      router.push("/dashboard");
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -77,7 +85,6 @@ export default function LoginPage() {
           {loading ? "در حال ورود..." : "تأیید"}
         </button>
 
-        {/* لینک به ثبت نام */}
         <p className="mt-4 text-center text-sm text-gray-600">
           حساب کاربری ندارید؟{" "}
           <button

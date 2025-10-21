@@ -11,7 +11,7 @@ import FooterSection from "../../sections/landing/FooterSection/FooterSection";
 
 function index() {
   return (
-    <div>
+    <div className='w-full'>
       <HeroSection />
       <FeaturesSection />
       <HowItWorksSection />

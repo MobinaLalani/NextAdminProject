@@ -1,17 +1,20 @@
-"use client";
-
+// stores/useUserStore.ts
 import { create } from "zustand";
-
-type Role = "admin" | "operator" | "viewer";
-
-interface UserState {
-  name: string;
+export type Role = "admin" | "manager" | "user";
+interface User {
+  id: number;
+  username: string;
   role: Role;
-  setUser: (name: string, role: Role) => void;
 }
 
-export const useUserStore = create<UserState>((set) => ({
-  name: "",
-  role: "viewer",
-  setUser: (name, role) => set({ name, role }),
+interface UserStore {
+  user: User | null ;
+  setUser: (user: User) => void;
+  clearUser: () => void;
+}
+
+export const useUserStore = create<UserStore>((set) => ({
+  user: null,
+  setUser: (user) => set({ user }),
+  clearUser: () => set({ user: null }),
 }));

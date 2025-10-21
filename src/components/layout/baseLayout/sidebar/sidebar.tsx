@@ -1,11 +1,14 @@
+"use client";
 import React from "react";
 import { LogOut } from "lucide-react";
-import { menuItems, Role } from "./menuItem";
-import { useUserStore } from "@/store/userStore"; // یا هر context که نقش رو نگه می‌داره
+import { menuItems } from "./menuItem";
+import { useUserStore } from "@/store/userStore";
 import Link from "next/link";
 
 export default function Sidebar() {
-  const role='admin'
+  const { user, clearUser } = useUserStore();
+  if (!user) return null;
+
 
   return (
     <aside className="w-64 bg-blue-200 border-r border-gray-200 h-screen flex flex-col">
@@ -15,7 +18,7 @@ export default function Sidebar() {
 
       <nav className="flex-1 px-4 py-6 space-y-2">
         {menuItems
-          .filter((item) => item.roles.includes(role)) // 🔹 فقط آیتم‌های مجاز
+          .filter((item) => item.roles.includes(user?.role))
           .map((item) => (
             <Link
               key={item.path}
@@ -28,12 +31,15 @@ export default function Sidebar() {
           ))}
       </nav>
 
-      <div className="border-t border-gray-200 p-4">
-        <button className="flex items-center gap-2 text-gray-700 hover:text-red-600 transition w-full">
+      {/* <div className="border-t border-gray-200 p-4">
+        <button
+          onClick={clearUser}
+          className="flex items-center gap-2 text-gray-700 hover:text-red-600 transition w-full"
+        >
           <LogOut size={18} />
           <span>خروج</span>
         </button>
-      </div>
+      </div> */}
     </aside>
   );
 }

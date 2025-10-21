@@ -1,13 +1,12 @@
-
-import React from 'react';
-import Index from '@/sections/landing';
+import React from "react";
+import Index from "@/sections/landing";
 
 function page() {
   return (
     <div>
-     <Index/>
+      <Index />
     </div>
-  )
+  );
 }
 
-export default page
+export default page;

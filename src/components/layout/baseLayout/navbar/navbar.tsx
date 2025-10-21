@@ -1,9 +1,12 @@
 "use client";
 import React from "react";
 import Image from "next/image";
+import { useUserStore } from "@/store/userStore";
 import ProfileDropdown from "./ProfileDropdown";
 
 export default function Navbar() {
+    const { user } = useUserStore();
+
   const handleLogout = async () => {
     try {
       const res = await fetch("/api/auth/logout", {
@@ -16,7 +19,6 @@ export default function Navbar() {
         throw new Error(data.message || "Logout failed");
       }
 
-      // ریدایرکت به لندینگ بعد از خروج
       window.location.href = "/landing";
     } catch (err) {
       if (err instanceof Error) {
@@ -30,8 +32,6 @@ export default function Navbar() {
   return (
     <nav className="  bg-gray-200 shadow-sm border-b border-gray-200 relative">
       <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center  justify-between">
-
-
         {/* Middle: Links */}
         <div className="hidden md:flex items-center gap-6 text-gray-600">
           <a href="#features" className="hover:text-gray-900 transition">
@@ -49,8 +49,13 @@ export default function Navbar() {
         </div>
 
         {/* Right: Profile */}
-        <ProfileDropdown onLogout={handleLogout} />
+
+        <div className="flex flex-row gap-3 items-center">
+          <span className="font-semibold text-gray-700">{user?.username}</span>
+          <ProfileDropdown onLogout={handleLogout} />
+        </div>
       </div>
     </nav>
   );
 }
+

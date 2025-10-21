@@ -1,11 +1,13 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
+import { useUserStore } from "@/store/userStore";
 import Image from "next/image";
 interface ProfileDropdownProps {
   onLogout?: () => void;
 }
 
 export default function ProfileDropdown({ onLogout }: ProfileDropdownProps) {
+  const { clearUser } = useUserStore();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -54,6 +56,7 @@ export default function ProfileDropdown({ onLogout }: ProfileDropdownProps) {
               <button
                 onClick={() => {
                   onLogout?.();
+                  clearUser();
                   setOpen(false);
                 }}
                 className="w-full text-right px-4 py-2 hover:bg-gray-100"
