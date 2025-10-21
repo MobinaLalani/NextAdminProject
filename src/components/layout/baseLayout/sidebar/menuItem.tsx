@@ -17,7 +17,7 @@ export const menuItems: MenuItem[] = [
     roles: ["admin", "manager", "user"],
   },
   {
-    title: "سفارش‌ها",
+    title: "اطلاعات کاربر",
     path: "/orders",
     icon: <Package size={18} />,
     roles: ["admin", "manager"],
