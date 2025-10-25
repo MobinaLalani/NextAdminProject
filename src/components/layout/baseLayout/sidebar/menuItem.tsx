@@ -24,7 +24,7 @@ export const menuItems: MenuItem[] = [
   },
   {
     title: "مشتریان",
-    path: "/customers",
+    path: "/users",
     icon: <Users size={18} />,
     roles: ["admin"],
   },

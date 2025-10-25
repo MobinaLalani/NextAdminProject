@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import Map from "./map/map";
 import Table from "./table/table";
