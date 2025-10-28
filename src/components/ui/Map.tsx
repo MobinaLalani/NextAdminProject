@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Map, MapMouseEvent } from "mapbox-gl";
+import type { Map } from "mapbox-gl";
 import "@neshan-maps-platform/mapbox-gl/dist/NeshanMapboxGl.css";
 
 export interface MapPoint {
@@ -20,7 +20,6 @@ interface MapComponentProps {
 export default function MapComponent({ points }: MapComponentProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
-  const markersRef = useRef<any[]>([]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -40,53 +39,122 @@ export default function MapComponent({ points }: MapComponentProps) {
 
       map.on("load", () => {
         points.forEach((point) => {
-          const el = document.createElement("div");
+          // ساختن المنت مارکر
+          const markerEl = document.createElement("div");
+          markerEl.className = "custom-marker";
 
-          // فقط دایره ساده
-          el.style.width = "18px";
-          el.style.height = "18px";
-          el.style.borderRadius = "50%";
-          el.style.backgroundColor =
-            point.status === "active" ? "#4CAF50" : "#FF4D4F";
-          el.style.border = "2px solid white";
-          el.style.boxShadow = "0 0 4px rgba(0,0,0,0.3)";
-          el.style.cursor = "pointer";
+          const color = point.status === "active" ? "#6c5ce7" : "#636e72";
 
-          // 🔹 ساخت marker
-          const marker = new mapboxgl.Marker({
-            element: el,
-            anchor: "center", // باعث میشه دایره دقیقاً روی نقطه باشه
+          // HTML درون مارکر
+          markerEl.innerHTML = `
+            <div class="marker-wrapper" style="--marker-color:${color}">
+              <div class="marker-circle">
+                <img src="/icons/microhubIcone.svg" width="16" height="16" />
+              </div>
+              <div class="marker-stick"></div>
+              <div class="marker-tooltip">
+                <div class="tooltip-content">
+                  <b>${point.name}</b><br/>
+                  <small>${point.status}</small>
+                </div>
+              </div>
+            </div>
+          `;
+
+          // اضافه کردن به نقشه
+          new mapboxgl.Marker({
+            element: markerEl,
+            anchor: "bottom",
           })
             .setLngLat([point.lng, point.lat])
-            .setPopup(
-              new mapboxgl.Popup({
-                closeButton: false,
-                closeOnClick: false,
-                offset: 25, // پاپ‌آپ کمی بالاتر از نقطه
-              }).setHTML(`
-                <div style="display:flex;align-items:center;gap:6px;font-size:14px;">
-                  <img src="/icons/microhubIcone.svg" width="20" height="20" />
-                  <b>${point.name}</b>
-                  <span>(${point.status})</span>
-                </div>
-              `)
-            )
             .addTo(map);
-
-          marker.togglePopup();
-          markersRef.current.push(marker);
         });
       });
     });
   }, [points]);
 
   return (
-    <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold">🗺️ نقشه نِشان</h1>
-      <div
-        ref={mapContainerRef}
-        className="w-full h-[80vh] rounded-2xl border shadow-lg"
-      />
-    </div>
+    <>
+      {/* استایل‌های سفارشی مارکر */}
+      <style jsx global>{`
+        .marker-wrapper {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .marker-circle {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: var(--marker-color);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+          cursor: pointer;
+          transition: transform 0.2s ease;
+        }
+
+        .marker-stick {
+          width: 4px;
+          height: 12px;
+          background: var(--marker-color);
+          border-radius: 2px;
+          margin-top: -2px;
+        }
+
+        .marker-circle:hover {
+          transform: scale(1.1);
+        }
+
+        .marker-tooltip {
+          position: absolute;
+          top: 2px;
+          right: -190px;
+          opacity: 0;
+          visibility: hidden;
+          transform: translateX(10px);
+          transition: all 0.3s ease;
+        }
+
+        .marker-wrapper:hover .marker-tooltip {
+          opacity: 1;
+          visibility: visible;
+          transform: translateX(0);
+        }
+
+        .tooltip-content {
+          background: white;
+          border-radius: 10px;
+          padding: 8px 12px;
+          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+          border-left: 4px solid var(--marker-color);
+          min-width: 130px;
+          font-size: 13px;
+          color: #333;
+        }
+
+        .tooltip-content::after {
+          content: "";
+          position: absolute;
+          top: 14px;
+          left: -6px;
+          border-width: 6px;
+          border-style: solid;
+          border-color: transparent white transparent transparent;
+        }
+      `}</style>
+
+      <div className="p-6 space-y-4">
+        <h1 className="text-2xl font-bold">🗺️ نقشه نِشان</h1>
+        <div
+          ref={mapContainerRef}
+          className="w-full h-[80vh] rounded-2xl border shadow-lg"
+        />
+      </div>
+    </>
   );
 }
