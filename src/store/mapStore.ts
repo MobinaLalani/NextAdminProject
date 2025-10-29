@@ -1,36 +1,41 @@
 import { create } from "zustand";
 
 export type MarkerCategory = "taxi_terminal" | "microhub" | "node";
-export type MarkerStatus = "active" | "inactive";
 
 export interface MapPoint {
   id: string;
   name: string;
   category: MarkerCategory;
-  status: MarkerStatus;
+  status: "active" | "inactive";
   lat: number;
   lng: number;
 }
 
-interface MapState {
-  searchCoords: { lat: number; lng: number } | null;
-  setSearchCoords: (coords: { lat: number; lng: number }) => void;
-
+export interface MapState {
   points: MapPoint[];
+  mode: "view" | "defineZone";
+  zonePoints: MapPoint[];
+  addZonePoint: (point: MapPoint) => void;
+  clearZonePoints: () => void;
   setPoints: (points: MapPoint[]) => void;
-  addPoint: (point: MapPoint) => void;
-  updatePointStatus: (id: string, status: MarkerStatus) => void;
+  setMode: (mode: "view" | "defineZone") => void;
 }
 
-export const MapStore = create<MapState>((set, get) => ({
-  searchCoords: null,
-  setSearchCoords: (coords) => set({ searchCoords: coords }),
-
+export const MapStore = create<MapState>((set) => ({
   points: [],
+  mode: "view",
+  zonePoints: [],
+
+  addZonePoint: (point) =>
+    set((state) => ({
+      zonePoints: [...state.zonePoints, point],
+    })),
+
+  clearZonePoints: () =>
+    set(() => ({
+      zonePoints: [],
+    })),
+
   setPoints: (points) => set({ points }),
-  addPoint: (point) => set({ points: [...get().points, point] }),
-  updatePointStatus: (id, status) =>
-    set({
-      points: get().points.map((p) => (p.id === id ? { ...p, status } : p)),
-    }),
+  setMode: (mode) => set({ mode }),
 }));

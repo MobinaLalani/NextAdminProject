@@ -1,35 +1,50 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Map } from "mapbox-gl";
 import "@neshan-maps-platform/mapbox-gl/dist/NeshanMapboxGl.css";
+// ⚠ مسیر استور را با مسیر واقعی خودت جایگزین کن
+import { MapStore } from "@/store/mapStore";
+
+export type MarkerCategory = "taxi_terminal" | "microhub" | "node";
+export type PointStatus = "active" | "inactive";
 
 export interface MapPoint {
   id: string;
   name: string;
-  category: "taxi_terminal" | "microhub" | "node";
-  status: "active" | "inactive";
+  category: MarkerCategory;
+  status: PointStatus;
   lat: number;
   lng: number;
 }
 
 interface MapComponentProps {
-  points: MapPoint[];
+  points: any[];
+  initialZones?: [number, number][][]; // آرایه‌ای از زون‌ها، هر زون خودش آرایه‌ای از نقاط [lng, lat]
 }
 
-export default function MapComponent({ points }: MapComponentProps) {
+export default function MapComponent({
+  points,
+  initialZones,
+}: MapComponentProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
+  const mapboxglRef = useRef<any>(null);
 
+  const { mode } = MapStore(); // فقط mode از استور گرفته می‌شود
+  const [zonePoints, setZonePoints] = useState<[number, number][]>([]);
+
+  // 🗺️ ایجاد نقشه
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (mapRef.current) return;
 
     import("@neshan-maps-platform/mapbox-gl").then((module) => {
       const mapboxgl = module.default;
-      if (!mapContainerRef.current || mapRef.current) return;
+      mapboxglRef.current = mapboxgl;
 
       const map = new mapboxgl.Map({
-        container: mapContainerRef.current,
+        container: mapContainerRef.current!,
         mapKey: "web.28982402f11941ea986940075f138ff1",
         center: [51.389, 35.6892],
         zoom: 12,
@@ -38,123 +53,178 @@ export default function MapComponent({ points }: MapComponentProps) {
       mapRef.current = map;
 
       map.on("load", () => {
-        points.forEach((point) => {
-          // ساختن المنت مارکر
-          const markerEl = document.createElement("div");
-          markerEl.className = "custom-marker";
-
-          const color = point.status === "active" ? "#6c5ce7" : "#636e72";
-
-          // HTML درون مارکر
-          markerEl.innerHTML = `
-            <div class="marker-wrapper" style="--marker-color:${color}">
-              <div class="marker-circle">
-                <img src="/icons/microhubIcone.svg" width="16" height="16" />
-              </div>
-              <div class="marker-stick"></div>
-              <div class="marker-tooltip">
-                <div class="tooltip-content">
-                  <b>${point.name}</b><br/>
-                  <small>${point.status}</small>
-                </div>
-              </div>
-            </div>
-          `;
-
-          // اضافه کردن به نقشه
-          new mapboxgl.Marker({
-            element: markerEl,
-            anchor: "bottom",
-          })
-            .setLngLat([point.lng, point.lat])
-            .addTo(map);
-        });
+        renderMarkers();
+        if (initialZones && initialZones.length > 0) {
+          initialZones.forEach((zone: any) => drawZoneLine(zone, true));
+        }
       });
     });
-  }, [points]);
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, []);
+
+  // 🔁 با تغییر نقاط یا mode دوباره مارکرها رندر می‌شوند
+  useEffect(() => {
+    renderMarkers();
+  }, [points, mode]);
+
+  const drawZoneLine = (coordinates: [number, number][], isInitial = false) => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // حذف لایه‌ها و سورس‌ها فقط اگر زون جدید است (برای زون‌های آماده جدا)
+    if (!isInitial) {
+      ["zone-line", "zone-fill"].forEach((id) => {
+        if (map.getLayer(id)) map.removeLayer(id);
+      });
+      ["zone", "zone-line"].forEach((id) => {
+        if (map.getSource(id)) map.removeSource(id);
+      });
+    }
+
+    if (coordinates.length < 2) return;
+
+    const isClosed =
+      coordinates.length >= 3 &&
+      coordinates[0][0] === coordinates[coordinates.length - 1][0] &&
+      coordinates[0][1] === coordinates[coordinates.length - 1][1];
+
+    if (isClosed) {
+      const polygonGeoJSON: GeoJSON.Feature<GeoJSON.Polygon> = {
+        type: "Feature",
+        geometry: { type: "Polygon", coordinates: [coordinates] },
+        properties: {},
+      };
+
+      const sourceId = isInitial ? `zone-initial-${Math.random()}` : "zone";
+
+      map.addSource(sourceId, { type: "geojson", data: polygonGeoJSON });
+
+      map.addLayer({
+        id: `${sourceId}-fill`,
+        type: "fill",
+        source: sourceId,
+        layout: {},
+        paint: { "fill-color": "#00B894", "fill-opacity": 0.25 },
+      });
+    }
+
+    // رسم خط هم مشابه قبلی
+    const lineGeoJSON: GeoJSON.Feature<GeoJSON.LineString> = {
+      type: "Feature",
+      geometry: { type: "LineString", coordinates },
+      properties: {},
+    };
+
+    const lineSourceId = isInitial
+      ? `zone-line-initial-${Math.random()}`
+      : "zone-line";
+
+    if (!map.getSource(lineSourceId)) {
+      map.addSource(lineSourceId, { type: "geojson", data: lineGeoJSON });
+    } else {
+      (map.getSource(lineSourceId) as any).setData(lineGeoJSON);
+    }
+
+    if (!map.getLayer(lineSourceId)) {
+      map.addLayer({
+        id: lineSourceId,
+        type: "line",
+        source: lineSourceId,
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: {
+          "line-color": "#00B894",
+          "line-width": 3,
+          "line-dasharray": [2, 2],
+        },
+      });
+    }
+  };
+
+  const renderMarkers = () => {
+    const map = mapRef.current;
+    const mapboxgl = mapboxglRef.current;
+    if (!map || !mapboxgl) return;
+
+    document.querySelectorAll(".custom-marker").forEach((el) => el.remove());
+
+    points.forEach((point) => {
+      const markerEl = document.createElement("div");
+      markerEl.className = "custom-marker";
+
+      const isActive = point.status === "active";
+      const colorClass = isActive ? "bg-emerald-600" : "bg-gray-500";
+      const labelBgClass = isActive
+        ? "bg-emerald-100 text-emerald-800"
+        : "bg-gray-500 text-white";
+
+      let iconSrc = "/icons/microhubIcone.svg";
+      if (point.category === "taxi_terminal") iconSrc = "/icons/TaxiIcon.svg";
+      else if (point.category === "node") iconSrc = "/icons/nodeIcon.svg";
+
+      markerEl.innerHTML = `
+        <div class="flex flex-col items-center cursor-pointer">
+         <div class="mb-1 bg-white px-2 py-1 rounded-md shadow text-xs font-medium">
+            <div class="flex items-center gap-1.5">
+              <b class="font-semibold">${point.name}</b>
+              <span class="px-2 py-0.5 rounded-md text-xs font-medium ${labelBgClass}">
+                ${isActive ? "فعال" : "غیرفعال"}
+              </span>
+            </div>
+          </div>
+          <div class="w-7 h-7 rounded-full flex items-center justify-center shadow-md ${colorClass}">
+            <img src="${iconSrc}" width="16" height="16" />
+          </div>
+          <div class="w-0.5 h-6 ${colorClass} -mt-0.5"></div>
+         
+        </div>
+      `;
+
+      const marker = new mapboxgl.Marker({
+        element: markerEl,
+        anchor: "bottom",
+      })
+        .setLngLat([point.lng, point.lat])
+        .addTo(map);
+
+      markerEl.addEventListener("click", () => {
+        if (mode === "defineZone") {
+          // ✅ فقط نقاط فعال را بررسی می‌کنیم
+          if (
+            ["node", "microhub", "taxi_terminal"].includes(point.category) &&
+            point.status === "active" // <-- اضافه شد
+          ) {
+            setZonePoints((prev: any) => {
+              const newPoints = [...prev, [point.lng, point.lat]];
+              drawZoneLine(newPoints);
+              return newPoints;
+            });
+          }
+        }
+      });
+    });
+  };
+
+  useEffect(() => {
+    if (zonePoints.length >= 3) {
+      console.log("✅ Zone points:", zonePoints);
+    }
+  }, [zonePoints]);
 
   return (
-    <>
-      {/* استایل‌های سفارشی مارکر */}
-      <style jsx global>{`
-        .marker-wrapper {
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
-
-        .marker-circle {
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          background: var(--marker-color);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
-          cursor: pointer;
-          transition: transform 0.2s ease;
-        }
-
-        .marker-stick {
-          width: 4px;
-          height: 12px;
-          background: var(--marker-color);
-          border-radius: 2px;
-          margin-top: -2px;
-        }
-
-        .marker-circle:hover {
-          transform: scale(1.1);
-        }
-
-        .marker-tooltip {
-          position: absolute;
-          top: 2px;
-          right: -190px;
-          opacity: 0;
-          visibility: hidden;
-          transform: translateX(10px);
-          transition: all 0.3s ease;
-        }
-
-        .marker-wrapper:hover .marker-tooltip {
-          opacity: 1;
-          visibility: visible;
-          transform: translateX(0);
-        }
-
-        .tooltip-content {
-          background: white;
-          border-radius: 10px;
-          padding: 8px 12px;
-          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-          border-left: 4px solid var(--marker-color);
-          min-width: 130px;
-          font-size: 13px;
-          color: #333;
-        }
-
-        .tooltip-content::after {
-          content: "";
-          position: absolute;
-          top: 14px;
-          left: -6px;
-          border-width: 6px;
-          border-style: solid;
-          border-color: transparent white transparent transparent;
-        }
-      `}</style>
-
-      <div className="p-6 space-y-4">
-        <h1 className="text-2xl font-bold">🗺️ نقشه نِشان</h1>
-        <div
-          ref={mapContainerRef}
-          className="w-full h-[80vh] rounded-2xl border shadow-lg"
-        />
-      </div>
-    </>
+    <div className="p-6 space-y-4">
+      <p className="text-sm text-gray-500">
+        حالت فعلی: <b>{mode === "defineZone" ? "تعریف زون" : "نمایش"}</b>
+      </p>
+      <div
+        ref={mapContainerRef}
+        className="w-full h-[80vh] rounded-2xl border shadow-lg"
+      />
+    </div>
   );
 }
