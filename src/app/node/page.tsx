@@ -2,51 +2,69 @@
 
 import { useEffect, useState } from "react";
 
-export default function Page() {
-  const [users, setUsers] = useState<any[]>([]);
+interface NodeItem {
+  Id: number;
+  Title: string;
+  LocationWKT?: string | null;
+  Address?: string | null;
+  IsActive?: boolean;
+}
+
+export default function NodesPage() {
+  const [nodes, setNodes] = useState<NodeItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // از API دیتارو می‌گیره
-    fetch("/api/node")
-      .then((res) => res.json())
+    fetch("/api/node") // دریافت داده‌ها از روت جدید
+      .then((res) => {
+        if (!res.ok) throw new Error("Network response was not ok");
+        return res.json();
+      })
       .then((data) => {
-        setUsers(data);
+        setNodes(data);
         setLoading(false);
       })
       .catch((err) => {
-        console.error("Error fetching users:", err);
+        console.error("خطا در دریافت داده‌ها:", err);
+        setError("مشکل در دریافت اطلاعات دیتابیس");
         setLoading(false);
       });
   }, []);
 
   if (loading) return <p className="text-gray-500">در حال بارگذاری...</p>;
-  console.log('users',users)
+  if (error) return <p className="text-red-500">{error}</p>;
+
   return (
     <div className="p-6">
-      {/* <h1 className="text-2xl font-bold mb-4">لیست کاربران</h1>
-      {users.length === 0 ? (
-        <p>هیچ کاربری پیدا نشد.</p>
+      <h1 className="text-2xl font-bold mb-4">لیست نودها</h1>
+
+      {nodes.length === 0 ? (
+        <p>هیچ رکوردی پیدا نشد.</p>
       ) : (
         <table className="min-w-full border border-gray-300 rounded-lg">
           <thead className="bg-gray-100">
             <tr>
-              <th className="border px-4 py-2">ID</th>
-              <th className="border px-4 py-2">Name</th>
-              <th className="border px-4 py-2">Email</th>
+              <th className="border px-4 py-2">Id</th>
+              <th className="border px-4 py-2">Title</th>
+              <th className="border px-4 py-2">Location (WKT)</th>
+              <th className="border px-4 py-2">Address</th>
+              <th className="border px-4 py-2">Active</th>
             </tr>
           </thead>
           <tbody>
-            {users?.map((user) => (
-              <tr key={user.id}>
-                <td className="border px-4 py-2">{user.id}</td>
-                <td className="border px-4 py-2">{user.name}</td>
-                <td className="border px-4 py-2">{user.email}</td>
+            {nodes.map((node) => (
+              <tr key={node.Id}>
+                <td className="border px-4 py-2">{node.Id}</td>
+                <td className="border px-4 py-2">{node.Title}</td>
+                <td className="border px-4 py-2">{node.LocationWKT ?? "-"}</td>
+                <td className="border px-4 py-2">{node.Address ?? "-"}</td>
+                <td className="border px-4 py-2">{node.IsActive ? "بلی" : "خیر"}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      )} */}
+      )}
     </div>
   );
 }

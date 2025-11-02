@@ -1,15 +1,25 @@
+// lib/db.ts
+import sql from "mssql";
 
-import mysql from "mysql2/promise";
-
-// ...existing code...
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || "172.16.2.86",
+// تنظیمات اتصال
+const config = {
   user: process.env.DB_USER || "develop",
-  password: process.env.DB_PASS || "*dJ5%#XJm_VMVwc*",
-  database: process.env.DB_NAME || "halaz-main-develop",
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-});
+  password: process.env.DB_PASSWORD || "*dJ5%#XJm_VMVwc*",
+  server: process.env.DB_SERVER as string || "172.16.2.86",
+  database: process.env.DB_DATABASE || "halaz-main-develop",
+  port: Number(process.env.DB_PORT) || 1433,
+  options: {
+    encrypt: process.env.DB_ENCRYPT === "true", // برای Azure یا SSL
+    trustServerCertificate: true, // اگر SSL ندارید، این رو true بذارید
+  },
+};
 
-export default pool;
+// برای جلوگیری از باز شدن کانکشن‌های زیاد در حالت dev
+let pool: sql.ConnectionPool;
+
+export const getConnection = async () => {
+  if (!pool) {
+    pool = await sql.connect(config);
+  }
+  return pool;
+};
