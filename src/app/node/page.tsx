@@ -2,21 +2,21 @@
 
 import { useEffect, useState } from "react";
 
-interface NodeItem {
+interface MapNodeItem {
   Id: number;
   Title: string;
-  LocationWKT?: string | null;
-  Address?: string | null;
-  IsActive?: boolean;
+  Latitude: number;
+  Longitude: number;
+  statusId: number;
 }
 
-export default function NodesPage() {
-  const [nodes, setNodes] = useState<NodeItem[]>([]);
+export default function MapNodePage() {
+  const [nodes, setNodes] = useState<MapNodeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/node") // دریافت داده‌ها از روت جدید
+    fetch("/api/node") // مسیر جدید API
       .then((res) => {
         if (!res.ok) throw new Error("Network response was not ok");
         return res.json();
@@ -27,7 +27,7 @@ export default function NodesPage() {
       })
       .catch((err) => {
         console.error("خطا در دریافت داده‌ها:", err);
-        setError("مشکل در دریافت اطلاعات دیتابیس");
+        setError("مشکلی در ارتباط با دیتابیس رخ داده است");
         setLoading(false);
       });
   }, []);
@@ -37,29 +37,31 @@ export default function NodesPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">لیست نودها</h1>
+      <h1 className="text-2xl font-bold mb-4">لیست نقاط نقشه (Map Nodes)</h1>
 
       {nodes.length === 0 ? (
-        <p>هیچ رکوردی پیدا نشد.</p>
+        <p>هیچ رکوردی یافت نشد.</p>
       ) : (
         <table className="min-w-full border border-gray-300 rounded-lg">
           <thead className="bg-gray-100">
             <tr>
               <th className="border px-4 py-2">Id</th>
-              <th className="border px-4 py-2">Title</th>
-              <th className="border px-4 py-2">Location (WKT)</th>
-              <th className="border px-4 py-2">Address</th>
-              <th className="border px-4 py-2">Active</th>
+              <th className="border px-4 py-2">عنوان</th>
+              <th className="border px-4 py-2">عرض جغرافیایی (Latitude)</th>
+              <th className="border px-4 py-2">طول جغرافیایی (Longitude)</th>
+              <th className="border px-4 py-2">وضعیت</th>
             </tr>
           </thead>
           <tbody>
             {nodes.map((node) => (
               <tr key={node.Id}>
-                <td className="border px-4 py-2">{node.Id}</td>
+                <td className="border px-4 py-2 text-center">{node.Id}</td>
                 <td className="border px-4 py-2">{node.Title}</td>
-                <td className="border px-4 py-2">{node.LocationWKT ?? "-"}</td>
-                <td className="border px-4 py-2">{node.Address ?? "-"}</td>
-                <td className="border px-4 py-2">{node.IsActive ? "بلی" : "خیر"}</td>
+                <td className="border px-4 py-2 text-center">{node.Latitude}</td>
+                <td className="border px-4 py-2 text-center">{node.Longitude}</td>
+                <td className="border px-4 py-2 text-center">
+                  {node.statusId === 1 ? "فعال" : "غیرفعال"}
+                </td>
               </tr>
             ))}
           </tbody>
