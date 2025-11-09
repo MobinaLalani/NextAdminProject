@@ -1,38 +1,61 @@
 "use client";
-
+import type { MapComponentProps } from "../../../types/maps";
 import { useEffect, useRef, useState } from "react";
 import type { Map } from "mapbox-gl";
 import "@neshan-maps-platform/mapbox-gl/dist/NeshanMapboxGl.css";
-// ⚠ مسیر استور را با مسیر واقعی خودت جایگزین کن
 import { MapStore } from "@/store/mapStore";
 
-export type MarkerCategory = "taxi_terminal" | "microhub" | "node";
-export type PointStatus = "active" | "inactive";
 
-export interface MapPoint {
-  id: string;
-  name: string;
-  category: MarkerCategory;
-  status: PointStatus;
-  lat: number;
-  lng: number;
-}
 
-interface MapComponentProps {
-  points: any[];
-  initialZones?: [number, number][][]; // آرایه‌ای از زون‌ها، هر زون خودش آرایه‌ای از نقاط [lng, lat]
-}
+
 
 export default function MapComponent({
   points,
   initialZones,
+  zoneTitles,
+  onPointClick,
+  onZoneClick,
+  onCreateNodeRequest,
 }: MapComponentProps) {
+ 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const mapboxglRef = useRef<any>(null);
 
-  const { mode } = MapStore(); // فقط mode از استور گرفته می‌شود
+  const { mode } = MapStore();
   const [zonePoints, setZonePoints] = useState<[number, number][]>([]);
+  const pendingMarkerRef = useRef<any>(null);
+  const pendingCoordsRef = useRef<[number, number] | null>(null);
+  const [newZone, setNewZone] = useState<[number, number][]>([]);
+
+  // محاسبه مرکز پلی‌گون با فرمول وزن‌دار مساحت (در صورت صفر بودن مساحت، میانگین ساده)
+  const polygonCentroid = (coords: [number, number][]): [number, number] => {
+    if (!coords || coords.length < 3) {
+      return coords && coords.length ? coords[0] : [0, 0];
+    }
+    // اگر مختصات بسته شده‌اند، نقطه تکراری آخر را حذف می‌کنیم
+    const arr = coords[0][0] === coords[coords.length - 1][0] && coords[0][1] === coords[coords.length - 1][1]
+      ? coords.slice(0, -1)
+      : coords;
+    let area = 0;
+    let cx = 0;
+    let cy = 0;
+    for (let i = 0, j = arr.length - 1; i < arr.length; j = i++) {
+      const [x1, y1] = arr[j];
+      const [x2, y2] = arr[i];
+      const f = x1 * y2 - x2 * y1;
+      area += f;
+      cx += (x1 + x2) * f;
+      cy += (y1 + y2) * f;
+    }
+    area *= 0.5;
+    if (area === 0) {
+      // fallback: میانگین ساده
+      const sum = arr.reduce((acc, cur) => [acc[0] + cur[0], acc[1] + cur[1]], [0, 0]) as [number, number];
+      return [sum[0] / arr.length, sum[1] / arr.length];
+    }
+    return [cx / (6 * area), cy / (6 * area)];
+  };
 
   // 🗺️ ایجاد نقشه
   useEffect(() => {
@@ -55,8 +78,149 @@ export default function MapComponent({
       map.on("load", () => {
         renderMarkers();
         if (initialZones && initialZones.length > 0) {
-          initialZones.forEach((zone: any) => drawZoneLine(zone, true));
+          initialZones.forEach((zone: any, idx: number) => {
+            // برای زون‌های اولیه شناسه‌های قابل پیش‌بینی بسازیم تا بتوانیم رویداد کلیک ثبت کنیم
+            const fillSourceId = `zone-initial-${idx}`;
+            const fillLayerId = `${fillSourceId}-fill`;
+            const lineSourceId = `${fillSourceId}-line`;
+            const labelSourceId = `${fillSourceId}-label`;
+            const labelLayerId = `${fillSourceId}-label-layer`;
+
+            // ساخت GeoJSON ها
+            const alreadyClosed =
+              zone.length >= 3 &&
+              zone[0][0] === zone[zone.length - 1][0] &&
+              zone[0][1] === zone[zone.length - 1][1];
+            const closedZone: [number, number][] =
+              zone.length >= 3
+                ? alreadyClosed
+                  ? zone
+                  : [...zone, zone[0]]
+                : zone;
+
+            if (closedZone.length >= 4) {
+              const polygonGeoJSON: GeoJSON.Feature<GeoJSON.Polygon> = {
+                type: "Feature",
+                geometry: { type: "Polygon", coordinates: [closedZone] },
+                properties: {},
+              };
+              map.addSource(fillSourceId, { type: "geojson", data: polygonGeoJSON });
+              map.addLayer({
+                id: fillLayerId,
+                type: "fill",
+                source: fillSourceId,
+                layout: {},
+                paint: { "fill-color": "#00B894", "fill-opacity": 0.25 },
+              });
+            }
+
+            const lineGeoJSON: GeoJSON.Feature<GeoJSON.LineString> = {
+              type: "Feature",
+              geometry: { type: "LineString", coordinates: closedZone },
+              properties: {},
+            };
+            map.addSource(lineSourceId, { type: "geojson", data: lineGeoJSON });
+            map.addLayer({
+              id: lineSourceId,
+              type: "line",
+              source: lineSourceId,
+              layout: { "line-join": "round", "line-cap": "round" },
+              paint: {
+                "line-color": "#00B894",
+                "line-width": 3,
+                "line-dasharray": [2, 2],
+              },
+            });
+
+const title = zoneTitles?.[idx] ?? "";
+if (title) {
+  const centroid = polygonCentroid(closedZone);
+
+  const labelGeoJSON: GeoJSON.Feature<GeoJSON.Point> = {
+    type: "Feature",
+    geometry: { type: "Point", coordinates: centroid },
+    properties: { title },
+  };
+
+  map.addSource(labelSourceId, { type: "geojson", data: labelGeoJSON });
+  map.addLayer({
+    id: labelLayerId,
+    type: "symbol",
+    source: labelSourceId,
+    layout: {
+      "text-field": ["get", "title"],
+      "text-size": 14,
+      "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+      "text-anchor": "center",
+      "text-allow-overlap": true,
+    },
+    paint: {
+      "text-color": "#065f46",
+      "text-halo-color": "#ffffff",
+      "text-halo-width": 2,
+    },
+  });
+}
+
+            // رویدادهای hover برای نشانگر دست
+            [fillLayerId, lineSourceId].forEach((layerId) => {
+              if (map.getLayer(layerId)) {
+                map.on("mouseenter", layerId, () => (map.getCanvas().style.cursor = "pointer"));
+                map.on("mouseleave", layerId, () => (map.getCanvas().style.cursor = ""));
+              }
+            });
+
+            // رویداد کلیک روی زون
+            [fillLayerId, lineSourceId].forEach((layerId) => {
+              if (map.getLayer(layerId)) {
+                map.on("click", layerId, () => {
+                  if (typeof onZoneClick === "function") {
+                    onZoneClick({ index: idx, coordinates: closedZone });
+                  }
+                });
+              }
+            });
+          });
         }
+
+// کلیک روی نقشه برای ایجاد نود
+map.on("click", (e: any) => {
+  if (mode === "createNode") {
+    const { lng, lat } = e.lngLat;
+    console.log("📍 مختصات نقطه جدید:", { lat, lng }); // ✅ نمایش مختصات در کنسول
+
+    // پاک کردن مارکر قبلی در صورت وجود
+    if (pendingMarkerRef.current) {
+      pendingMarkerRef.current.remove();
+      pendingMarkerRef.current = null;
+    }
+
+    pendingCoordsRef.current = [lng, lat];
+    // ساخت مارکر موقت
+    const markerEl = document.createElement("div");
+    markerEl.className = "custom-marker";
+    markerEl.innerHTML = `
+      <div class="flex flex-col items-center">
+        <div class="mb-1 bg-white px-2 py-1 rounded-md shadow text-xs font-semibold">نقطه جدید</div>
+        <div class="w-7 h-7 rounded-full flex items-center justify-center shadow-md bg-blue-600">
+          <img src="/icons/nodeIcon.svg" width="16" height="16" />
+        </div>
+        <div class="w-0.5 h-6 bg-blue-600 -mt-0.5"></div>
+      </div>
+    `;
+
+    const marker = new mapboxglRef.current.Marker({ element: markerEl, anchor: "bottom" })
+      .setLngLat([lng, lat])
+      .addTo(map);
+
+    pendingMarkerRef.current = marker;
+
+    if (typeof onCreateNodeRequest === "function") {
+      onCreateNodeRequest({ lat, lng });
+    }
+  }
+});
+
       });
     });
 
@@ -72,6 +236,25 @@ export default function MapComponent({
   useEffect(() => {
     renderMarkers();
   }, [points, mode]);
+  
+useEffect(() => {
+  const map = mapRef.current;
+  if (!map) return;
+
+  if (mode === "createNode") {
+    map.getCanvas().style.cursor = "crosshair";
+  } else {
+    map.getCanvas().style.cursor = "";
+  }
+}, [mode]);
+  // پاک کردن مارکر موقت هنگام خروج از حالت ایجاد نود
+  useEffect(() => {
+    if (mode !== "createNode" && pendingMarkerRef.current) {
+      pendingMarkerRef.current.remove();
+      pendingMarkerRef.current = null;
+      pendingCoordsRef.current = null;
+    }
+  }, [mode]);
 
   const drawZoneLine = (coordinates: [number, number][], isInitial = false) => {
     const map = mapRef.current;
@@ -197,7 +380,7 @@ export default function MapComponent({
           // ✅ فقط نقاط فعال را بررسی می‌کنیم
           if (
             ["node", "microhub", "taxi_terminal"].includes(point.category) &&
-            point.status === "active" // <-- اضافه شد
+            point.status === "active"
           ) {
             setZonePoints((prev: any) => {
               const newPoints = [...prev, [point.lng, point.lat]];
@@ -205,10 +388,63 @@ export default function MapComponent({
               return newPoints;
             });
           }
+        } else {
+          // 📌 در حالت نمایش، کلیک روی مارکر جزئیات را به والد می‌فرستد
+          if (typeof onPointClick === "function") onPointClick(point);
         }
       });
     });
   };
+ 
+// 🎯 رویداد کلیک روی نقشه برای ساخت نود جدید
+useEffect(() => {
+  const map = mapRef.current;
+  const mapboxgl = mapboxglRef.current;
+  if (!map || !mapboxgl) return;
+
+  // تابع هندلر برای کلیک
+  const handleMapClick = (e: any) => {
+    if (mode !== "createNode") return;
+
+    const { lng, lat } = e.lngLat;
+    console.log("📍 مختصات نود جدید:", { lat, lng });
+
+    // حذف مارکر موقت قبلی (در صورت وجود)
+    document.querySelectorAll(".temp-node-marker").forEach((el) => el.remove());
+
+    // ساخت مارکر موقت جدید
+    const markerEl = document.createElement("div");
+    markerEl.className = "custom-marker temp-node-marker";
+    markerEl.innerHTML = `
+      <div class="flex flex-col items-center">
+        <div class="mb-1 bg-white px-2 py-1 rounded-md shadow text-xs font-semibold">نقطه جدید</div>
+        <div class="w-7 h-7 rounded-full flex items-center justify-center shadow-md bg-blue-600">
+          <img src="/icons/nodeIcon.svg" width="16" height="16" />
+        </div>
+        <div class="w-0.5 h-6 bg-blue-600 -mt-0.5"></div>
+      </div>
+    `;
+
+    // افزودن مارکر به نقشه
+    new mapboxgl.Marker({ element: markerEl, anchor: "bottom" })
+      .setLngLat([lng, lat])
+      .addTo(map);
+
+    // اگر تابع ارسال داده به والد وجود دارد، مختصات را برگردان
+    if (typeof onCreateNodeRequest === "function") {
+      onCreateNodeRequest({ lat, lng });
+    }
+  };
+
+  // ثبت رویداد
+  map.on("click", handleMapClick);
+
+  // پاک‌سازی هنگام تغییر mode یا حذف کامپوننت
+  return () => {
+    map.off("click", handleMapClick);
+  };
+}, [mode, onCreateNodeRequest]);
+
 
   useEffect(() => {
     if (zonePoints.length >= 3) {
@@ -217,14 +453,82 @@ export default function MapComponent({
   }, [zonePoints]);
 
   return (
-    <div className="p-6 space-y-4">
-      <p className="text-sm text-gray-500">
-        حالت فعلی: <b>{mode === "defineZone" ? "تعریف زون" : "نمایش"}</b>
-      </p>
-      <div
-        ref={mapContainerRef}
-        className="w-full h-[80vh] rounded-2xl border shadow-lg"
-      />
-    </div>
-  );
+  <div className="p-6 space-y-4">
+    <p className="text-sm text-gray-500">
+      حالت فعلی: <b>{mode === "defineZone" ? "تعریف زون" : "نمایش"}</b>
+    </p>
+
+    <div
+      ref={mapContainerRef}
+      className="w-full h-[80vh] rounded-2xl border shadow-lg"
+    />
+
+    {/* ✅ فقط وقتی در حالت تعریف زون هست و حداقل ۳ نقطه انتخاب شده */}
+    {mode === "defineZone" && zonePoints.length >= 3 && (
+      <div className="flex justify-center mt-4">
+        <button
+          onClick={() => {
+            const closedZone =
+              zonePoints[0][0] === zonePoints[zonePoints.length - 1][0] &&
+              zonePoints[0][1] === zonePoints[zonePoints.length - 1][1]
+                ? zonePoints
+                : [...zonePoints, zonePoints[0]];
+
+            drawZoneLine(closedZone);
+            setZonePoints([]);
+            setNewZone(closedZone);
+
+            // 🟢 محاسبه مرکز زون برای لیبل
+            const center = polygonCentroid(closedZone);
+            const map = mapRef.current;
+            if (map) {
+              const labelSourceId = `new-zone-label`;
+              const labelLayerId = `new-zone-label-layer`;
+
+              const labelGeoJSON: GeoJSON.Feature<GeoJSON.Point> = {
+                type: "Feature",
+                geometry: { type: "Point", coordinates: center },
+                properties: { title: "زون جدید" },
+              };
+
+              if (map.getLayer(labelLayerId)) map.removeLayer(labelLayerId);
+              if (map.getSource(labelSourceId)) map.removeSource(labelSourceId);
+
+              map.addSource(labelSourceId, { type: "geojson", data: labelGeoJSON });
+              map.addLayer({
+                id: labelLayerId,
+                type: "symbol",
+                source: labelSourceId,
+                layout: {
+                  "text-field": ["get", "title"],
+                  "text-size": 14,
+                  "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+                  "text-anchor": "center",
+                  "text-allow-overlap": true,
+                },
+                paint: {
+                  "text-color": "#065f46",
+                  "text-halo-color": "#ffffff",
+                  "text-halo-width": 2,
+                },
+              });
+            }
+
+            // 📢 صدا زدن والد برای باز کردن پنل نام زون
+            if (typeof onZoneClick === "function") {
+              onZoneClick({
+                index: -1, // یعنی زون جدید
+                coordinates: closedZone,
+              });
+            }
+          }}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow"
+        >
+          ✅ اتمام ترسیم زون
+        </button>
+      </div>
+    )}
+  </div>
+);
+
 }

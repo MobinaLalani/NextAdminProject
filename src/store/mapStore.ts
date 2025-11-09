@@ -13,12 +13,12 @@ export interface MapPoint {
 
 export interface MapState {
   points: MapPoint[];
-  mode: "view" | "defineZone";
+  mode: "view" | "defineZone" | "createNode";
   zonePoints: MapPoint[];
   addZonePoint: (point: MapPoint) => void;
   clearZonePoints: () => void;
   setPoints: (points: MapPoint[]) => void;
-  setMode: (mode: "view" | "defineZone") => void;
+  setMode: (mode: "view" | "defineZone" | "createNode") => void;
 }
 
 export const MapStore = create<MapState>((set) => ({
@@ -31,6 +31,9 @@ export const MapStore = create<MapState>((set) => ({
       zonePoints: [...state.zonePoints, point],
     })),
 
+
+
+    
   clearZonePoints: () =>
     set(() => ({
       zonePoints: [],
