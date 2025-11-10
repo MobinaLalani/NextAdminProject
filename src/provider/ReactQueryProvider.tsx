@@ -1,15 +1,15 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactNode, useState } from "react";
+import React from "react";
 
-export default function ReactQueryProvider({
+export default function QueryProvider({
   children,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
 }) {
-  // فقط یک بار QueryClient ساخته می‌شود
-  const [queryClient] = useState(() => new QueryClient());
+  // ایجاد یک client که بین رندرها ثابت بمونه
+  const [queryClient] = React.useState(() => new QueryClient());
 
   return (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
