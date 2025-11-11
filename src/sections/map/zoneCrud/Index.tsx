@@ -11,51 +11,72 @@ interface ZoneFormProps {
   zoneForm: {
     ZoneTitle: string;
     ZoneStatus: number;
+    selectedNodeIds?: number[]; // اضافه کردیم
   };
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onFormChange?: (updatedForm: {
+    ZoneTitle: string;
+    ZoneStatus: number;
+    selectedNodeIds: number[];
+  }) => void; // callback برای ارسال کامل فرم
 }
 
-export default function ZoneForm({ zoneForm, onChange }: ZoneFormProps) {
-  const { data: nodes, isLoading, error } = useNodes();
+export default function ZoneForm({
+  zoneForm,
+  onChange,
+  onFormChange,
+}: ZoneFormProps) {
+  const { data: nodes } = useNodes();
   const { zoneNodes, setZoneNodes } = MapStore();
 
-  // مقدار اولیه selectedFruits از zoneNodes گرفته میشه
   const initialSelected = zoneNodes.map((item: any) => Number(item.id));
   const [selectedFruits, setSelectedFruits] =
     useState<number[]>(initialSelected);
 
-  // وقتی zoneNodes در store تغییر کرد، selectedFruits هم آپدیت بشه
   useEffect(() => {
     const ids = zoneNodes.map((item: any) => Number(item.id));
-    setSelectedFruits(ids);
+    const uniqueIds = Array.from(new Set(ids));
+    setSelectedFruits(uniqueIds);
+    if (onFormChange) {
+      onFormChange({
+        ...zoneForm,
+        selectedNodeIds: uniqueIds,
+      });
+    }
   }, [zoneNodes]);
 
-  // آماده کردن options برای AutoComplete
   const NodeDropDown: IDropDown[] =
     nodes?.map((item: any) => ({
       value: Number(item.Id),
       label: item.Title,
     })) || [];
 
-const handleNodeChange = (vals: number[]) => {
-  setSelectedFruits(vals);
+  const handleNodeChange = (vals: number[]) => {
+    setSelectedFruits(vals);
 
-  // ساخت آرایه کامل MapPoint
-  const newZoneNodes: MapPoint[] =
-    nodes
-      ?.filter((node: any) => vals.includes(Number(node.Id)))
-      .map((node: any) => ({
-        id: String(node.Id),
-        lat: node.Latitude, // مقدار واقعی خودت
-        lng: node.Longitude, // مقدار واقعی خودت
-        name: node.Title, // پر کردن فیلد name
-        category: node.Category || "node", // پر کردن category، default می‌ذاریم
-        status: node.Status || "active", // پر کردن status
-      })) || [];
+    const newZoneNodes: MapPoint[] =
+      nodes
+        ?.filter((node: any) => vals.includes(Number(node.Id)))
+        .map((node: any) => ({
+          id: String(node.Id),
+          lat: node.Latitude,
+          lng: node.Longitude,
+          name: node.Title,
+          category: node.Category || "node",
+          status: node.Status || "active",
+        })) || [];
 
-  setZoneNodes(newZoneNodes); // آپدیت Store
-};
- console.log("zoneNodesZoneForm", zoneNodes);
+    setZoneNodes(newZoneNodes);
+
+    // ارسال تغییرات به بیرون فرم
+    if (onFormChange) {
+      onFormChange({
+        ...zoneForm,
+        selectedNodeIds: vals,
+      });
+    }
+  };
+
   return (
     <div className="h-[80vh] p-5">
       <div className="mb-3">

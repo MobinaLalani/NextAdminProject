@@ -3,8 +3,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 interface ZoneData {
   ZoneTitle: string;
   ZoneStatus: number;
+  NodeIds?: number[];
 }
-
 export function useUpdateZone() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -34,6 +34,34 @@ export function useDeleteZone() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["zones"] });
+    },
+  });
+}
+
+
+
+
+export function useCreateZone() {
+  return useMutation({
+    mutationFn: async (data: ZoneData) => {
+      const res = await fetch("/api/zone", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "خطا در ایجاد زون");
+      }
+
+      return res.json();
+    },
+    onError: (error: any) => {
+      console.error("❌ خطا در ایجاد زون:", error);
+      throw error;
     },
   });
 }

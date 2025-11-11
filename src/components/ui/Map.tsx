@@ -196,7 +196,6 @@ map.on("click", (e: any) => {
     }
 
     pendingCoordsRef.current = [lng, lat];
-    // ساخت مارکر موقت
     const markerEl = document.createElement("div");
     markerEl.className = "custom-marker";
     markerEl.innerHTML = `
@@ -291,7 +290,7 @@ const drawZoneLine = (
 
     const sourceId = isInitial ? `zone-initial-${Math.random()}` : "zone";
 
-    // حذف لایه قبلی اگر وجود دارد
+
     if (map.getLayer(`${sourceId}-fill`)) map.removeLayer(`${sourceId}-fill`);
     if (map.getSource(sourceId)) map.removeSource(sourceId);
 
@@ -307,7 +306,7 @@ const drawZoneLine = (
       paint: { "fill-color": "#00B894", "fill-opacity": 0.25 },
     });
 
-    // ✅ تنظیم cursor روی pointer وقتی موس روی زون هست
+ 
     map.on("mouseenter", fillLayerId, () => {
       map.getCanvas().style.cursor = "pointer";
     });
@@ -322,7 +321,7 @@ const drawZoneLine = (
 
   }
 
-  // ✏️ رسم خط دور ناحیه (LineString)
+
   const lineGeoJSON: GeoJSON.Feature<GeoJSON.LineString> = {
     type: "Feature",
     geometry: { type: "LineString", coordinates },
@@ -403,7 +402,7 @@ const drawZoneLine = (
 
       markerEl.addEventListener("click", () => {
         if (mode === "defineZone") {
-          // ✅ فقط نقاط فعال را بررسی می‌کنیم
+
           if (
             ["node", "microhub", "taxi_terminal"].includes(point.category) &&
             point.status === "active"
@@ -418,30 +417,28 @@ const drawZoneLine = (
             });
           }
         } else {
-          // 📌 در حالت نمایش، کلیک روی مارکر جزئیات را به والد می‌فرستد
+
           if (typeof onPointClick === "function") onPointClick(point);
         }
       });
     });
   };
- 
-// 🎯 رویداد کلیک روی نقشه برای ساخت نود جدید
+
 useEffect(() => {
   const map = mapRef.current;
   const mapboxgl = mapboxglRef.current;
   if (!map || !mapboxgl) return;
 
-  // تابع هندلر برای کلیک
+
   const handleMapClick = (e: any) => {
     if (mode !== "createNode") return;
 
     const { lng, lat } = e.lngLat;
     console.log("📍 مختصات نود جدید:", { lat, lng });
 
-    // حذف مارکر موقت قبلی (در صورت وجود)
+
     document.querySelectorAll(".temp-node-marker").forEach((el) => el.remove());
 
-    // ساخت مارکر موقت جدید
     const markerEl = document.createElement("div");
     markerEl.className = "custom-marker temp-node-marker";
     markerEl.innerHTML = `
@@ -454,21 +451,21 @@ useEffect(() => {
       </div>
     `;
 
-    // افزودن مارکر به نقشه
+
     new mapboxgl.Marker({ element: markerEl, anchor: "bottom" })
       .setLngLat([lng, lat])
       .addTo(map);
 
-    // اگر تابع ارسال داده به والد وجود دارد، مختصات را برگردان
+
     if (typeof onCreateNodeRequest === "function") {
       onCreateNodeRequest({ lat, lng });
     }
   };
 
-  // ثبت رویداد
+
   map.on("click", handleMapClick);
 
-  // پاک‌سازی هنگام تغییر mode یا حذف کامپوننت
+
   return () => {
     map.off("click", handleMapClick);
   };
@@ -506,17 +503,11 @@ useEffect(() => {
                   ? zonePoints
                   : [...zonePoints, first];
 
-              // ❌ این دیگه لازم نیست:
-              // const coordinates = closedZone.map((p) => [p.lng, p.lat]);
-
-              // ✅ فقط همینو بده:
               drawZoneLine(closedZone);
 
               setZonePoints([]);
               setNewZone(closedZone);
 
-              // 🟢 حالا برای polygonCentroid چون هنوز [lng, lat] می‌خواد،
-              // فقط اونجا map کنیم:
               const center = polygonCentroid(
                 closedZone.map((p) => [p.lng, p.lat])
               );

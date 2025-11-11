@@ -44,15 +44,11 @@ export const MapStore = create<MapState>((set) => ({
 
   setZoneNodes: (zoneNodes) => set({ zoneNodes }),
 
-  // ✅ جلوگیری از تکرار و حذف در صورت وجود (toggle)
   addNode: (node) =>
     set((state) => {
       const exists = state.zoneNodes.some((n) => n.id === node.id);
-      if (exists) {
-        // اگر نود از قبل وجود دارد، آن را حذف کن
-        return { zoneNodes: state.zoneNodes.filter((n) => n.id !== node.id) };
+      if (exists) {        return { zoneNodes: state.zoneNodes.filter((n) => n.id !== node.id) };
       } else {
-        // در غیر این صورت نود جدید را اضافه کن
         return { zoneNodes: [...state.zoneNodes, node] };
       }
     }),
