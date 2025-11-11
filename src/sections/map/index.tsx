@@ -192,12 +192,13 @@ const [zoneForm, setZoneForm] = useState({
   };
 
 const handleZoneSave = () => {
-
+ debugger
   const dataToSave = {
     ZoneTitle: zoneForm.ZoneTitle,
     ZoneStatus: zoneForm.ZoneStatus,
     NodeIds: zoneForm.selectedNodeIds,
   };
+
   if (!selected) {
     createZone.mutate(dataToSave, {
       onSuccess: (res) => {

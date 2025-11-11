@@ -34,14 +34,20 @@ export async function GET() {
 // 🟡 CREATE - افزودن زون و نودهای مرتبط
 export async function POST(req: Request) {
   try {
-    const { Title, statusId, nodes } = await req.json();
+    const { ZoneTitle, ZoneStatus, NodeIds } = await req.json();
 
-    if (!Title) {
-      return NextResponse.json({ error: "Title is required" }, { status: 400 });
+    if (!ZoneTitle) {
+      return NextResponse.json(
+        { error: "ZoneTitle is required" },
+        { status: 400 }
+      );
     }
 
-    if (!Array.isArray(nodes) || nodes.length === 0) {
-      return NextResponse.json({ error: "Nodes array is required" }, { status: 400 });
+    if (!Array.isArray(NodeIds) || NodeIds.length === 0) {
+      return NextResponse.json(
+        { error: "Nodes array is required" },
+        { status: 400 }
+      );
     }
 
     const pool = await getConnection();
@@ -56,8 +62,8 @@ export async function POST(req: Request) {
     `;
     const zoneResult = await pool
       .request()
-      .input("Title", sql.NVarChar, Title)
-      .input("StatusId", sql.Int, statusId)
+      .input("ZoneTitle", sql.NVarChar, ZoneTitle)
+      .input("ZoneStatus", sql.Int, ZoneStatus)
       .query(insertZoneQuery);
 
     const createdZone = zoneResult.recordset?.[0];
@@ -75,7 +81,7 @@ export async function POST(req: Request) {
     table.columns.add("NodeId", sql.Int);
     table.columns.add("ZoneId", sql.Int);
 
-    nodes.forEach((nodeId: number) => {
+    NodeIds.forEach((nodeId: number) => {
       table.rows.add(nodeId, zoneId);
     });
 
@@ -90,7 +96,10 @@ export async function POST(req: Request) {
         SELECT NodeId, ZoneId FROM @NodesTable
       `);
 
-    return NextResponse.json({ zone: createdZone, nodesAdded: nodes.length }, { status: 201 });
+    return NextResponse.json(
+      { zone: createdZone, nodesAdded: NodeIds.length },
+      { status: 201 }
+    );
 
   } catch (err) {
     console.error("API /api/mapzone POST error:", err);
