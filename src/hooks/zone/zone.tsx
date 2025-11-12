@@ -1,10 +1,39 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+interface ZoneCoord {
+  nodeId: number;
+  lng: number;
+  lat: number;
+}
+
+interface ZoneResponse {
+  zoneId: number;
+  title: string;
+  status: number;
+  coords: ZoneCoord[];
+}
 
 interface ZoneData {
   ZoneTitle: string;
   ZoneStatus: number;
   NodeIds?: number[];
 }
+
+
+
+export function useGetZone(id?: number, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ["zone", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/zone/${id}`);
+      if (!res.ok) throw new Error("Failed to fetch zone");
+      return res.json();
+    },
+    enabled: !!id && options?.enabled !== false, // فقط وقتی id وجود دارد
+  });
+}
+
+// ✏️ PUT: بروزرسانی زون
 export function useUpdateZone() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -18,12 +47,14 @@ export function useUpdateZone() {
       if (!res.ok) throw new Error(result.error || "Failed to update zone");
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["zones"] });
+      queryClient.invalidateQueries({ queryKey: ["zone", id] }); // جزئیات زون هم بروز شود
     },
   });
 }
 
+// 🗑️ DELETE: حذف زون
 export function useDeleteZone() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -38,9 +69,7 @@ export function useDeleteZone() {
   });
 }
 
-
-
-
+// ➕ POST: ایجاد زون جدید
 export function useCreateZone() {
   return useMutation({
     mutationFn: async (data: ZoneData) => {

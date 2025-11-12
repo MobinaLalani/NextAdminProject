@@ -20,7 +20,6 @@ export async function GET() {
       FROM [dbo].[MapZoneNode] ZN
       JOIN [dbo].[MapZone] Z ON Z.Id = ZN.ZoneId
       JOIN [dbo].[MapNode] N ON N.Id = ZN.NodeId
-      WHERE ZoneId = 8
       ORDER BY ZN.Id;
     `;
     const result = await pool.request().query(query);
@@ -60,10 +59,11 @@ export async function POST(req: Request) {
       OUTPUT INSERTED.[Id], INSERTED.[Title], INSERTED.[StatusId]
       VALUES (@Title, @StatusId)
     `;
+    // نام پارامترها باید دقیقاً با نام‌های استفاده شده در کوئری (@Title, @StatusId) هم‌خوانی داشته باشند
     const zoneResult = await pool
       .request()
-      .input("ZoneTitle", sql.NVarChar, ZoneTitle)
-      .input("ZoneStatus", sql.Int, ZoneStatus)
+      .input("Title", sql.NVarChar, ZoneTitle)
+      .input("StatusId", sql.Int, ZoneStatus)
       .query(insertZoneQuery);
 
     const createdZone = zoneResult.recordset?.[0];
@@ -74,35 +74,31 @@ export async function POST(req: Request) {
     }
 
     // -----------------------------
-    // مرحله 2: درج رکوردهای MapZoneNode
+    // مرحله 2: درج رکوردهای MapZoneNode (بدون استفاده از TVP برای سادگی و سازگاری)
     // -----------------------------
-    // ساخت Table-Valued Parameter
-    const table = new sql.Table(); // استفاده از sql.Table() درست است
-    table.columns.add("NodeId", sql.Int);
-    table.columns.add("ZoneId", sql.Int);
+    let insertedCount = 0;
+    for (const nodeId of NodeIds) {
+      const insertNodeRes = await pool
+        .request()
+        .input("NodeId", sql.Int, nodeId)
+        .input("ZoneId", sql.Int, zoneId)
+        .query(
+          `INSERT INTO [dbo].[MapZoneNode] (NodeId, ZoneId) VALUES (@NodeId, @ZoneId)`
+        );
+      if (insertNodeRes.rowsAffected?.[0] > 0) insertedCount += insertNodeRes.rowsAffected[0];
+    }
 
-    NodeIds.forEach((nodeId: number) => {
-      table.rows.add(nodeId, zoneId);
-    });
-
-    // TVP نیاز به تعریف Type در SQL Server دارد
-    // ابتدا باید در SQL Server Type ایجاد شده باشد، مثلاً:
-    // CREATE TYPE NodeZoneTableType AS TABLE (NodeId INT, ZoneId INT);
-    await pool
-      .request()
-      .input("NodesTable", sql.TVP, table)
-      .query(`
-        INSERT INTO [dbo].[MapZoneNode] (NodeId, ZoneId)
-        SELECT NodeId, ZoneId FROM @NodesTable
-      `);
+    if (insertedCount === 0) {
+      return NextResponse.json({ error: "Failed to link nodes to zone" }, { status: 500 });
+    }
 
     return NextResponse.json(
-      { zone: createdZone, nodesAdded: NodeIds.length },
+      { zone: createdZone, nodesAdded: insertedCount },
       { status: 201 }
     );
 
   } catch (err) {
-    console.error("API /api/mapzone POST error:", err);
+    console.error("API /api/zone POST error:", err);
     return NextResponse.json({ error: "Insert failed" }, { status: 500 });
   }
 }

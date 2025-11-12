@@ -1,6 +1,64 @@
 import { NextResponse } from "next/server";
 import { getConnection } from "@/lib/db";
 
+// GET: دریافت جزئیات یک زون با ID
+export async function GET(
+  _req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const id = Number(params.id);
+    if (Number.isNaN(id)) {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    }
+
+    const pool = await getConnection();
+    const query = `
+    SELECT 
+        ZN.Id AS ZoneNodeId,
+        Z.Id AS ZoneId,
+        Z.Title AS ZoneTitle,
+        Z.StatusId AS ZoneStatus,
+        N.Id AS NodeId,
+        N.Title AS NodeTitle,
+        N.Latitude,
+        N.Longitude,
+        N.StatusId AS NodeStatus
+      FROM [dbo].[MapZoneNode] ZN
+      JOIN [dbo].[MapZone] Z ON Z.Id = ZN.ZoneId
+      JOIN [dbo].[MapNode] N ON N.Id = ZN.NodeId
+	  where ZoneId =@Id
+      ORDER BY ZN.Id;
+	  
+    `;
+
+    const result = await pool.request().input("Id", id).query(query);
+
+    if (result.recordset.length === 0) {
+      return NextResponse.json({ error: "Zone not found" }, { status: 404 });
+    }
+
+    const { ZoneId, Title, StatusId } = result.recordset[0];
+
+    const coords = result.recordset
+      .filter((r) => r.Longitude && r.Latitude)
+      .map((r) => ({
+        nodeId: r.NodeId,
+        lng: r.Longitude,
+        lat: r.Latitude,
+      }));
+
+    return NextResponse.json({
+      zoneId: ZoneId,
+      title: Title,
+      status: StatusId,
+      coords,
+    });
+  } catch (err) {
+    console.error("API /api/zone/[id] GET error:", err);
+    return NextResponse.json({ error: "Fetch failed" }, { status: 500 });
+  }
+}
 // PUT: ویرایش زون (Title/StatusId)
 export async function PUT(
   req: Request,
@@ -60,7 +118,10 @@ export async function DELETE(
 
     const pool = await getConnection();
     // پاک کردن وابستگی‌ها ابتدا
-    await pool.request().input("ZoneId", id).query(`DELETE FROM [dbo].[MapZoneNode] WHERE [ZoneId] = @ZoneId`);
+    await pool
+      .request()
+      .input("ZoneId", id)
+      .query(`DELETE FROM [dbo].[MapZoneNode] WHERE [ZoneId] = @ZoneId`);
     // سپس خود زون
     const del = await pool
       .request()

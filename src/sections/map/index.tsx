@@ -7,10 +7,8 @@ import MapComponent from "@/components/ui/Map";
 import { MapStore } from "@/store/mapStore";
 import NodeForm from "./nodeCrud/Index";
 import ZoneForm from "./zoneCrud/Index";
-
-// هوک‌های React Query برای CRUD
 import { useCreateNode, useUpdateNode, useDeleteNode  } from "@/hooks/node/node";
-import { useUpdateZone, useDeleteZone ,useCreateZone } from "@/hooks/zone/zone";
+import { useUpdateZone, useDeleteZone ,useCreateZone ,useGetZone } from "@/hooks/zone/zone";
 
 export default function MapIndex() {
   // -----------------------------
@@ -20,6 +18,7 @@ export default function MapIndex() {
   const [creatingNode, setCreatingNode] = useState(false);
   const [openZonePanel, setOpenZonePanel] = useState(false);
   const [selected, setSelected] = useState<any>(null);
+  const [selectedZone ,setSelectedZone]= useState();
   const [mapPoints, setMapPoints] = useState<MapPoint[]>([]);
   const [zoneShapes, setZoneShapes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,6 +99,7 @@ export default function MapIndex() {
     statusId: 1,
   });
 const [zoneForm, setZoneForm] = useState({
+  
   ZoneTitle: "",
   ZoneStatus: 1,
   selectedNodeIds: [] as number[], // اضافه شد
@@ -115,6 +115,44 @@ const [zoneForm, setZoneForm] = useState({
   const updateZone = useUpdateZone();
   const deleteZone = useDeleteZone();
   const createZone = useCreateZone();
+
+
+const { data: zoneData, isLoading: zoneLoading } = useGetZone(selectedZone, {
+  enabled: !!selectedZone, // فقط وقتی selectedZone مقدار دارد
+});
+
+console.log("zoneData", zoneData);
+//  useEffect(() => {
+//    if (zoneData && !zoneLoading) {
+//      setZoneShapes((prev) => {
+//        // اگه زون از قبل وجود داشت، آپدیتش کن
+//        const exists = prev.some((z) => z.zoneId === zoneData.zoneId);
+//        if (exists) {
+//          return prev.map((z) =>
+//            z.zoneId === zoneData.zoneId
+//              ? {
+//                  ...z,
+//                  title: zoneData.title,
+//                  status: zoneData.status,
+//                  coords: zoneData.coords || [],
+//                }
+//              : z
+//          );
+//        } else {
+//          // در غیر این صورت، زون جدید رو اضافه کن
+//          return [
+//            ...prev,
+//            {
+//              zoneId: zoneData.zoneId,
+//              title: zoneData.title,
+//              status: zoneData.status,
+//              coords: zoneData.coords || [],
+//            },
+//          ];
+//        }
+//      });
+//    }
+//  }, [zoneData, zoneLoading]);
 
   // -----------------------------
   // Node handlers
@@ -191,102 +229,52 @@ const [zoneForm, setZoneForm] = useState({
     setZoneForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-const handleZoneSave = () => {
- debugger
-  const dataToSave = {
-    ZoneTitle: zoneForm.ZoneTitle,
-    ZoneStatus: zoneForm.ZoneStatus,
-    NodeIds: zoneForm.selectedNodeIds,
-  };
+  const handleZoneSave = () => {
+    const dataToSave = {
+      ZoneTitle: zoneForm.ZoneTitle,
+      ZoneStatus: zoneForm.ZoneStatus,
+      NodeIds: zoneForm.selectedNodeIds,
+    };
 
-  if (!selected) {
-    createZone.mutate(dataToSave, {
-      onSuccess: (res) => {
-        console.log("✅ Zone created:", res);
-        setOpenZonePanel(false);
-        // آپدیت لیست زون‌ها (اختیاری)
-        setZoneShapes((prev) => [
-          ...prev,
-          {
-            zoneId: res.zone.Id,
-            title: res.zone.Title,
-            status: res.zone.StatusId,
-            coords: [],
-          },
-        ]);
-      },
-      onError: (err: any) => alert(err.message || "خطا در ایجاد زون"),
-    });
-    return;
-  }
-
-  console.log("dataToSave", dataToSave);
-  updateZone.mutate(
-    { id: selected.id, data: dataToSave },
-    {
-      onSuccess: (updated) => {
-        setMapPoints((prev) =>
-          prev.map((z) =>
-            z.id === String(updated.Id)
-              ? { ...z, name: updated.Title, statusId: updated.StatusId }
-              : z
-          )
-        );
-        setOpenZonePanel(false);
-      },
-      onError: (err: any) => alert(err.message || "خطا در ویرایش زون"),
+    if (!selected) {
+      createZone.mutate(dataToSave, {
+        onSuccess: (res) => {
+          console.log("✅ Zone created:", res);
+          setOpenZonePanel(false);
+          // آپدیت لیست زون‌ها (اختیاری)
+          setZoneShapes((prev) => [
+            ...prev,
+            {
+              zoneId: res.zone.Id,
+              title: res.zone.Title,
+              status: res.zone.StatusId,
+              coords: [],
+            },
+          ]);
+        },
+        onError: (err: any) => alert(err.message || "خطا در ایجاد زون"),
+      });
+      return;
     }
-  );
-};
 
-// const handleZoneSave = () => {
-//   const dataToSave = {
-//     Title: zoneForm.ZoneTitle,
-//     statusId: zoneForm.ZoneStatus,
-//     nodes: zoneForm.selectedNodeIds,
-//   };
 
-//   // اگر selected خالی بود یعنی زون جدید می‌سازیم
-//   if (!selected) {
-//     createZone.mutate(dataToSave, {
-//       onSuccess: (res) => {
-//         console.log("✅ Zone created:", res);
-//         setOpenZonePanel(false);
-//         // آپدیت لیست زون‌ها (اختیاری)
-//         setZoneShapes((prev) => [
-//           ...prev,
-//           {
-//             zoneId: res.zone.Id,
-//             title: res.zone.Title,
-//             status: res.zone.StatusId,
-//             coords: [],
-//           },
-//         ]);
-//       },
-//       onError: (err: any) => alert(err.message || "خطا در ایجاد زون"),
-//     });
-//     return;
-//   }
-
-//   // در غیر این صورت یعنی ویرایش زون
-//   updateZone.mutate(
-//     { id: selected.id, data: dataToSave },
-//     {
-//       onSuccess: (updated) => {
-//         setZoneShapes((prev) =>
-//           prev.map((z) =>
-//             z.zoneId === updated.Id
-//               ? { ...z, title: updated.Title, status: updated.StatusId }
-//               : z
-//           )
-//         );
-//         setOpenZonePanel(false);
-//       },
-//       onError: (err: any) => alert(err.message || "خطا در ویرایش زون"),
-//     }
-//   );
-// };
-
+    updateZone.mutate(
+      { id: selected.id, data: dataToSave },
+      {
+        onSuccess: (updated) => {
+          setMapPoints((prev) =>
+            prev.map((z) =>
+              z.id === String(updated.Id)
+                ? { ...z, name: updated.Title, statusId: updated.StatusId }
+                : z
+            )
+          );
+          setOpenZonePanel(false);
+        },
+        onError: (err: any) => alert(err.message || "خطا در ویرایش زون"),
+      }
+    );
+  };
 
   const handleCreateNodeRequest = ({
     lat,
@@ -339,19 +327,34 @@ const handleZoneSave = () => {
   const handleZoneClick = (info: {
     index: number;
     coordinates: [number, number][];
-  }) => {
+  }) => {     
     const idx = info.index;
-    const z = zoneShapes[idx];
-    if (!z) return;
+     console.log("zoneShapes", zoneShapes[idx].zoneId);
+     setSelectedZone(zoneShapes[idx].zoneId);
+    // console.log("zoneShapes", zoneShapes);
+    // const z = zoneShapes[idx];
+    // console.log("z ", z);
+    // const nodeIds =
+    //   z?.coords?.map((c: any) => c.nodeId).filter(Boolean) || [];
 
-    setSelected(idx); 
-setZoneForm({
-  ZoneTitle: z.title,
-  ZoneStatus: z.status,
-  selectedNodeIds: z.nodeIds || [], // اضافه شد
-});
-    setOpenZonePanel(true);     
+    // if (!z) return;
+
+    // استخراج nodeIdها از coords
+
+    // ذخیره‌ی زون انتخابی
+    // setSelected(idx);
+
+    // // مقداردهی فرم
+    // setZoneForm({
+    //   // ZoneId: z.zoneId,
+    //   ZoneTitle: z.title,
+    //   ZoneStatus: z.status,
+    //   selectedNodeIds: nodeIds,
+    // });
+
+    setOpenZonePanel(true);
   };
+
 
   // -----------------------------
   // Render UI
@@ -475,7 +478,7 @@ setZoneForm({
             }
           >
             <ZoneForm
-              zoneForm={zoneForm}
+              zoneForm={zoneData}
               onChange={handleZoneChange}
               onFormChange={(updatedForm) => setZoneForm(updatedForm)}
             />

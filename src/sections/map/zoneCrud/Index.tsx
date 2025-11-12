@@ -28,7 +28,7 @@ export default function ZoneForm({
 }: ZoneFormProps) {
   const { data: nodes } = useNodes();
   const { zoneNodes, setZoneNodes } = MapStore();
-
+  console.log("zoneForm", zoneForm);
   const initialSelected = zoneNodes.map((item: any) => Number(item.id));
   const [selectedFruits, setSelectedFruits] =
     useState<number[]>(initialSelected);
@@ -78,41 +78,42 @@ export default function ZoneForm({
   };
 
   return (
-    <div className="h-[80vh] p-5">
-      <div className="mb-3">
-        <label className="block mb-1">عنوان زون</label>
-        <input
-          name="ZoneTitle"
-          value={zoneForm.ZoneTitle}
-          onChange={onChange}
-          className="border px-3 py-2 w-full rounded"
-        />
-      </div>
+    {zoneForm}
+    // <div className="h-[80vh] p-5">
+    //   <div className="mb-3">
+    //     <label className="block mb-1">عنوان زون</label>
+    //     <input
+    //       name="ZoneTitle"
+    //       value={zoneForm.ZoneTitle}
+    //       onChange={onChange}
+    //       className="border px-3 py-2 w-full rounded"
+    //     />
+    //   </div>
 
-      <div className="mb-3">
-        <label className="block mb-1">وضعیت زون (1 فعال / 0 غیرفعال)</label>
-        <input
-          type="number"
-          name="ZoneStatus"
-          value={zoneForm.ZoneStatus}
-          onChange={onChange}
-          className="border px-3 py-2 w-full rounded"
-          min={0}
-          max={1}
-        />
-      </div>
+    //   <div className="mb-3">
+    //     <label className="block mb-1">وضعیت زون (1 فعال / 0 غیرفعال)</label>
+    //     <input
+    //       type="number"
+    //       name="ZoneStatus"
+    //       value={zoneForm.ZoneStatus}
+    //       onChange={onChange}
+    //       className="border px-3 py-2 w-full rounded"
+    //       min={0}
+    //       max={1}
+    //     />
+    //   </div>
 
-      <div className="mb-3">
-        <AutoComplete
-          placeholder="Select nodes"
-          options={NodeDropDown}
-          value={selectedFruits}
-          innerClassName="border border-gray-300 rounded-[12px]"
-          className="my-3"
-          isMulty
-          onChange={handleNodeChange}
-        />
-      </div>
-    </div>
+    //   <div className="mb-3">
+    //     <AutoComplete
+    //       placeholder="Select nodes"
+    //       options={NodeDropDown}
+    //       value={selectedFruits}
+    //       innerClassName="border border-gray-300 rounded-[12px]"
+    //       className="my-3"
+    //       isMulty
+    //       onChange={handleNodeChange}
+    //     />
+    //   </div>
+    // </div>
   );
 }
