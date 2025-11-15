@@ -7,8 +7,9 @@ export async function GET() {
     const pool = await getConnection();
     const query = `
       SELECT TOP (1000)
-        [Id], [Title], [Latitude], [Longitude], [statusId]
-      FROM [dbo].[MapNode]
+       [MapNode].[Id], [Title], [Latitude], [Longitude], [statusId] ,MapNodeLabel.LabelId as LabelId
+      FROM [dbo].[MapNode] left join MapNodeLabel
+	    on [MapNode].Id = MapNodeLabel.NodeId
       ORDER BY [Id] DESC
     `;
     const result = await pool.request().query(query);

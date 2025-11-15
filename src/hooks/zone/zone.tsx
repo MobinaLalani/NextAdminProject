@@ -7,10 +7,9 @@ interface ZoneCoord {
 }
 
 interface ZoneResponse {
-  zoneId: number;
-  title: string;
-  status: number;
-  coords: ZoneCoord[];
+  zoneTitle: string;
+  zoneStatus: number;
+  selectedNodes: ZoneCoord[];
 }
 
 interface ZoneData {
@@ -22,16 +21,17 @@ interface ZoneData {
 
 
 export function useGetZone(id?: number, options?: { enabled?: boolean }) {
-  return useQuery({
+  return useQuery<ZoneResponse>({
     queryKey: ["zone", id],
     queryFn: async () => {
       const res = await fetch(`/api/zone/${id}`);
       if (!res.ok) throw new Error("Failed to fetch zone");
       return res.json();
     },
-    enabled: !!id && options?.enabled !== false, // فقط وقتی id وجود دارد
+    enabled: !!id && options?.enabled !== false,
   });
 }
+
 
 // ✏️ PUT: بروزرسانی زون
 export function useUpdateZone() {

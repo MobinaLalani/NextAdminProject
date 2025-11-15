@@ -2,6 +2,7 @@
 import type { MapComponentProps } from "../../../types/maps";
 import { MapPoint } from "@/store/mapStore";
 import { useEffect, useRef, useState } from "react";
+import { renderMarkers } from "../../Utils/map/renderMarkers";
 import type { Map } from "mapbox-gl";
 import "@neshan-maps-platform/mapbox-gl/dist/NeshanMapboxGl.css";
 import { MapStore } from "@/store/mapStore";
@@ -57,6 +58,26 @@ export default function MapComponent({
     return [cx / (6 * area), cy / (6 * area)];
   };
 
+  useEffect(() => {
+    const map = mapRef.current;
+    const mapboxgl = mapboxglRef.current;
+    if (!map || !mapboxgl) return;
+
+    renderMarkers({
+      map,
+      mapboxgl,
+      points,
+      mode,
+      onPointClick,
+      onZonePointAdd: (p) => {
+        setZonePoints((prev) => {
+          const newList = [...prev, p];
+          drawZoneLine(newList);
+          return newList;
+        });
+      },
+    });
+  }, [points, mode]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -76,7 +97,21 @@ export default function MapComponent({
       mapRef.current = map;
 
       map.on("load", () => {
-        renderMarkers();
+      renderMarkers({
+        map,
+        mapboxgl,
+        points,
+        mode,
+        onPointClick,
+        onZonePointAdd: (p) => {
+          setZonePoints((prev) => {
+            const list = [...prev, p];
+            drawZoneLine(list);
+            return list;
+          });
+        },
+      });
+
         if (initialZones && initialZones.length > 0) {
           initialZones.forEach((zone: any, idx: number) => {
             // برای زون‌های اولیه شناسه‌های قابل پیش‌بینی بسازیم تا بتوانیم رویداد کلیک ثبت کنیم
@@ -232,10 +267,8 @@ map.on("click", (e: any) => {
   }, []);
 
 
-  useEffect(() => {
-    renderMarkers();
-  }, [points, mode]);
-  
+
+
   useEffect(() => {
   const map = mapRef.current;
   if (!map) return;
@@ -353,76 +386,6 @@ const drawZoneLine = (
   }
 };
 
-
-  const renderMarkers = () => {
-    const map = mapRef.current;
-    const mapboxgl = mapboxglRef.current;
-    if (!map || !mapboxgl) return;
-
-    document.querySelectorAll(".custom-marker").forEach((el) => el.remove());
-
-    points.forEach((point) => {
-      const markerEl = document.createElement("div");
-      markerEl.className = "custom-marker";
-
-      const isActive = point.status === "active";
-      const colorClass = isActive ? "bg-emerald-600" : "bg-gray-500";
-      const labelBgClass = isActive
-        ? "bg-emerald-100 text-emerald-800"
-        : "bg-gray-500 text-white";
-
-      let iconSrc = "/icons/microhubIcone.svg";
-      if (point.category === "taxi_terminal") iconSrc = "/icons/TaxiIcon.svg";
-      else if (point.category === "node") iconSrc = "/icons/nodeIcon.svg";
-
-      markerEl.innerHTML = `
-        <div class="flex flex-col items-center cursor-pointer">
-         <div class="mb-1 bg-white px-2 py-1 rounded-md shadow text-xs font-medium">
-            <div class="flex items-center gap-1.5">
-              <b class="font-semibold">${point.name}</b>
-              <span class="px-2 py-0.5 rounded-md text-xs font-medium ${labelBgClass}">
-                ${isActive ? "فعال" : "غیرفعال"}
-              </span>
-            </div>
-          </div>
-          <div class="w-7 h-7 rounded-full flex items-center justify-center shadow-md ${colorClass}">
-            <img src="${iconSrc}" width="16" height="16" />
-          </div>
-          <div class="w-0.5 h-6 ${colorClass} -mt-0.5"></div>
-         
-        </div>
-      `;
-
-      const marker = new mapboxgl.Marker({
-        element: markerEl,
-        anchor: "bottom",
-      })
-        .setLngLat([point.lng, point.lat])
-        .addTo(map);
-
-      markerEl.addEventListener("click", () => {
-        if (mode === "defineZone") {
-
-          if (
-            ["node", "microhub", "taxi_terminal"].includes(point.category) &&
-            point.status === "active"
-          ) {
-            setZonePoints((prev: any) => {
-            const newPoints = [
-              ...prev,
-              { id: point.id, lat: point.lat, lng: point.lng },
-            ];
-              drawZoneLine(newPoints);
-              return newPoints;
-            });
-          }
-        } else {
-
-          if (typeof onPointClick === "function") onPointClick(point);
-        }
-      });
-    });
-  };
 
 useEffect(() => {
   const map = mapRef.current;

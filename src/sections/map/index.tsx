@@ -41,6 +41,7 @@ export default function MapIndex() {
         const zones = await zonesRes.json();
 
         // تبدیل nodes به MapPoint
+        
         const mapPointsData: MapPoint[] = nodes.map((n: any) => ({
           id: String(n.Id),
           name: n.Title,
@@ -49,6 +50,7 @@ export default function MapIndex() {
           lat: Number(n.Latitude),
           lng: Number(n.Longitude),
           statusId: Number(n.statusId),
+          LabelId: Number(n.LabelId),
         }));
         setMapPoints(mapPointsData);
 
@@ -118,10 +120,22 @@ const [zoneForm, setZoneForm] = useState({
 
 
 const { data: zoneData, isLoading: zoneLoading } = useGetZone(selectedZone, {
-  enabled: !!selectedZone, // فقط وقتی selectedZone مقدار دارد
+  enabled: !!selectedZone,
 });
+useEffect(() => {
+  if (zoneData && !zoneLoading) {
+    const ids = (zoneData.selectedNodes || [])
+      .map((c: any) => Number(c.nodeId))
+      .filter(Boolean);
 
-console.log("zoneData", zoneData);
+    setZoneForm({
+      ZoneTitle: zoneData.zoneTitle ?? "",
+      ZoneStatus: Number(zoneData.zoneStatus ?? 1),
+      selectedNodeIds: ids,
+    });
+  }
+}, [zoneData, zoneLoading]);
+
 //  useEffect(() => {
 //    if (zoneData && !zoneLoading) {
 //      setZoneShapes((prev) => {
@@ -161,6 +175,7 @@ console.log("zoneData", zoneData);
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  console.log("zoneFormInGeneral", zoneForm);
   const handleCreateSave = () => {
     createNode.mutate(form, {
       onSuccess: (created) => {
@@ -229,15 +244,18 @@ console.log("zoneData", zoneData);
     setZoneForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  console.log("selectedZone", selectedZone);
   const handleZoneSave = () => {
+    debugger
+
     const dataToSave = {
       ZoneTitle: zoneForm.ZoneTitle,
       ZoneStatus: zoneForm.ZoneStatus,
       NodeIds: zoneForm.selectedNodeIds,
     };
-
-    if (!selected) {
-      createZone.mutate(dataToSave, {
+   console.log("dataToSave", dataToSave);
+  if (!selectedZone) {
+    createZone.mutate(dataToSave, {
         onSuccess: (res) => {
           console.log("✅ Zone created:", res);
           setOpenZonePanel(false);
@@ -256,11 +274,9 @@ console.log("zoneData", zoneData);
       });
       return;
     }
-
-
-    updateZone.mutate(
-      { id: selected.id, data: dataToSave },
-      {
+  updateZone.mutate(
+    { id: Number(selectedZone), data: dataToSave },
+    {
         onSuccess: (updated) => {
           setMapPoints((prev) =>
             prev.map((z) =>
@@ -478,7 +494,7 @@ console.log("zoneData", zoneData);
             }
           >
             <ZoneForm
-              zoneForm={zoneData}
+              zoneForm={zoneForm}
               onChange={handleZoneChange}
               onFormChange={(updatedForm) => setZoneForm(updatedForm)}
             />

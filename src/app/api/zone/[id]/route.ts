@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getConnection } from "@/lib/db";
 
-// GET: دریافت جزئیات یک زون با ID
 export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
@@ -13,8 +12,9 @@ export async function GET(
     }
 
     const pool = await getConnection();
+
     const query = `
-    SELECT 
+      SELECT 
         ZN.Id AS ZoneNodeId,
         Z.Id AS ZoneId,
         Z.Title AS ZoneTitle,
@@ -27,9 +27,8 @@ export async function GET(
       FROM [dbo].[MapZoneNode] ZN
       JOIN [dbo].[MapZone] Z ON Z.Id = ZN.ZoneId
       JOIN [dbo].[MapNode] N ON N.Id = ZN.NodeId
-	  where ZoneId =@Id
+      WHERE ZN.ZoneId = @Id
       ORDER BY ZN.Id;
-	  
     `;
 
     const result = await pool.request().input("Id", id).query(query);
@@ -38,10 +37,12 @@ export async function GET(
       return NextResponse.json({ error: "Zone not found" }, { status: 404 });
     }
 
-    const { ZoneId, Title, StatusId } = result.recordset[0];
+    // گرفتن اطلاعات اصلی زون
+    const { ZoneTitle, ZoneStatus } = result.recordset[0];
 
-    const coords = result.recordset
-      .filter((r) => r.Longitude && r.Latitude)
+    // ساخت selectedNodes
+    const selectedNodes = result.recordset
+      .filter((r) => r.Latitude && r.Longitude)
       .map((r) => ({
         nodeId: r.NodeId,
         lng: r.Longitude,
@@ -49,17 +50,17 @@ export async function GET(
       }));
 
     return NextResponse.json({
-      zoneId: ZoneId,
-      title: Title,
-      status: StatusId,
-      coords,
+      zoneTitle: ZoneTitle,
+      zoneStatus: ZoneStatus,
+      selectedNodes,
     });
   } catch (err) {
     console.error("API /api/zone/[id] GET error:", err);
     return NextResponse.json({ error: "Fetch failed" }, { status: 500 });
   }
 }
-// PUT: ویرایش زون (Title/StatusId)
+
+
 export async function PUT(
   req: Request,
   { params }: { params: { id: string } }
@@ -71,9 +72,9 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { Title = null, StatusId = null } = body as {
-      Title?: string | null;
-      StatusId?: number | null;
+    const { ZoneTitle = null, ZoneStatus = null } = body as {
+      ZoneTitle?: string | null;
+      ZoneStatus?: number | null;
     };
 
     const pool = await getConnection();
@@ -88,8 +89,8 @@ export async function PUT(
     const result = await pool
       .request()
       .input("Id", id)
-      .input("Title", Title)
-      .input("StatusId", StatusId)
+      .input("Title", ZoneTitle)
+      .input("StatusId", ZoneStatus)
       .query(updateQuery);
 
     if (result.rowsAffected[0] === 0)
@@ -105,7 +106,8 @@ export async function PUT(
   }
 }
 
-// DELETE: حذف زون و وابستگی‌هایش در MapZoneNode
+
+
 export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
