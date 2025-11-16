@@ -19,6 +19,7 @@ export default function MapIndex() {
   const [creatingNode, setCreatingNode] = useState(false);
   const [openZonePanel, setOpenZonePanel] = useState(false);
   const [selected, setSelected] = useState<any>(null);
+  const [selectedNode ,setSelectedNode]=useState<string>();
   const [selectedZone ,setSelectedZone]= useState();
   const [mapPoints, setMapPoints] = useState<MapPoint[]>([]);
   const [zoneShapes, setZoneShapes] = useState<any[]>([]);
@@ -118,7 +119,10 @@ const [zoneForm, setZoneForm] = useState({
   const deleteZone = useDeleteZone();
   const createZone = useCreateZone();
 
+const { data: NodeData, isLoading:nodeLoading } = useGetNode(selectedNode
+);
 
+console.log("NodeData", NodeData);
 const { data: zoneData, isLoading: zoneLoading } = useGetZone(selectedZone, {
   enabled: !!selectedZone, // فقط وقتی selectedZone مقدار دارد
 });
@@ -300,7 +304,8 @@ console.log("FinalData", FinalData);
       return;
     }
 
-    setSelected(p);
+    setSelected(p)
+    setSelectedNode(p?.id);
     setForm({
       Title: p.name,
       Latitude: p.lat,
@@ -317,35 +322,11 @@ console.log("FinalData", FinalData);
   }) => {     
     const idx = info.index;
      console.log("zoneShapes", zoneShapes[idx].zoneId);
-     setSelectedZone(zoneShapes[idx].zoneId);
-    // console.log("zoneShapes", zoneShapes);
-    // const z = zoneShapes[idx];
-    // console.log("z ", z);
-    // const nodeIds =
-    //   z?.coords?.map((c: any) => c.nodeId).filter(Boolean) || [];
-
-    // if (!z) return;
-
-    // استخراج nodeIdها از coords
-
-    // ذخیره‌ی زون انتخابی
-    // setSelected(idx);
-
-    // // مقداردهی فرم
-    // setZoneForm({
-    //   // ZoneId: z.zoneId,
-    //   ZoneTitle: z.title,
-    //   ZoneStatus: z.status,
-    //   selectedNodeIds: nodeIds,
-    // });
+     setSelectedZone(zoneShapes[idx].zoneId)
 
     setOpenZonePanel(true);
   };
 
-
-  // -----------------------------
-  // Render UI
-  // -----------------------------
   return (
     <div>
       {loading && <div>در حال بارگذاری نقشه...</div>}
