@@ -19,7 +19,7 @@ export default function MapComponent({
   onZoneClick,
   onCreateNodeRequest,
 }: MapComponentProps) {
- 
+ console.log("points", points);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const mapboxglRef = useRef<any>(null);
@@ -96,25 +96,24 @@ export default function MapComponent({
 
       mapRef.current = map;
 
-      map.on("load", () => {
-      renderMarkers({
-        map,
-        mapboxgl,
-        points,
-        mode,
-        onPointClick,
-        onZonePointAdd: (p) => {
-          setZonePoints((prev) => {
-            const list = [...prev, p];
-            drawZoneLine(list);
-            return list;
+          map.on("load", () => {
+          renderMarkers({
+            map,
+            mapboxgl,
+            points,
+            mode,
+            onPointClick,
+            onZonePointAdd: (p) => {
+              setZonePoints((prev) => {
+                const list = [...prev, p];
+                drawZoneLine(list);
+                return list;
+              });
+            },
           });
-        },
-      });
 
         if (initialZones && initialZones.length > 0) {
           initialZones.forEach((zone: any, idx: number) => {
-            // برای زون‌های اولیه شناسه‌های قابل پیش‌بینی بسازیم تا بتوانیم رویداد کلیک ثبت کنیم
             const fillSourceId = `zone-initial-${idx}`;
             const fillLayerId = `${fillSourceId}-fill`;
             const lineSourceId = `${fillSourceId}-line`;

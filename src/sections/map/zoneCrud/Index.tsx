@@ -1,3 +1,5 @@
+// components/map/ZoneForm.tsx
+
 "use client";
 import React, { useState, useEffect } from "react";
 import { MapStore } from "@/store/mapStore";
@@ -9,14 +11,14 @@ interface ZoneFormProps {
   zoneForm: {
     ZoneTitle: string;
     ZoneStatus: number;
-    selectedNodeIds?: number[];
+    selectedNodeIds?: any | undefined; // اضافه کردیم
   };
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onFormChange?: (updatedForm: {
     ZoneTitle: string;
     ZoneStatus: number;
     selectedNodeIds: number[];
-  }) => void;
+  }) => void; // callback برای ارسال کامل فرم
 }
 
 export default function ZoneForm({
@@ -25,51 +27,32 @@ export default function ZoneForm({
   onFormChange,
 }: ZoneFormProps) {
   const { data: nodes } = useNodes();
-  const { setZoneNodes } = MapStore();
+  const { zoneNodes, setZoneNodes } = MapStore();
+  console.log("zoneForm", zoneForm);
+  const initialSelected = zoneNodes.map((item: any) => Number(item.id));
+  const [selectedFruits, setSelectedFruits] =
+    useState<number[]>(initialSelected);
 
-  const [selectedNodes, setSelectedNodes] = useState<number[]>([]);
-
-  // -----------------------------
-  //  ⬇️ مقداردهی اولیه از zoneForm
-  // -----------------------------
   useEffect(() => {
-    if (zoneForm?.selectedNodeIds) {
-      setSelectedNodes(zoneForm.selectedNodeIds);
-
-      // اینجا mapStore را نیز مقداردهی می‌کنیم
-      if (nodes) {
-        const newZoneNodes = nodes
-          .filter((node: any) =>
-            zoneForm.selectedNodeIds?.includes(Number(node.Id))
-          )
-          .map((node: any) => ({
-            id: String(node.Id),
-            lat: node.Latitude,
-            lng: node.Longitude,
-            name: node.Title,
-            category: node.Category || "node",
-            status: node.Status || "active",
-          })) as MapPoint[];
-
-        setZoneNodes(newZoneNodes);
-      }
+    const ids = zoneNodes.map((item: any) => Number(item.id));
+    const uniqueIds = Array.from(new Set(ids));
+    setSelectedFruits(uniqueIds);
+    if (onFormChange) {
+      onFormChange({
+        ...zoneForm,
+        selectedNodeIds: uniqueIds,
+      });
     }
-  }, [zoneForm, nodes]);
+  }, [zoneNodes]);
 
-  // -----------------------------
-  //  ⬇️ dropdown options
-  // -----------------------------
   const NodeDropDown: IDropDown[] =
     nodes?.map((item: any) => ({
       value: Number(item.Id),
       label: item.Title,
     })) || [];
 
-  // -----------------------------
-  //   ⬇️ تغییر Nodeها
-  // -----------------------------
   const handleNodeChange = (vals: number[]) => {
-    setSelectedNodes(vals);
+    setSelectedFruits(vals);
 
     const newZoneNodes: MapPoint[] =
       nodes
@@ -81,10 +64,12 @@ export default function ZoneForm({
           name: node.Title,
           category: node.Category || "node",
           status: node.Status || "active",
+          LabelId: node.LabelId,
         })) || [];
 
     setZoneNodes(newZoneNodes);
 
+    // ارسال تغییرات به بیرون فرم
     if (onFormChange) {
       onFormChange({
         ...zoneForm,
@@ -92,14 +77,15 @@ export default function ZoneForm({
       });
     }
   };
-  console.log("zoneFormInzoneForm", zoneForm);
+
   return (
+
     <div className="h-[80vh] p-5">
       <div className="mb-3">
         <label className="block mb-1">عنوان زون</label>
         <input
           name="ZoneTitle"
-          value={zoneForm.ZoneTitle ?? ""}
+          value={zoneForm.ZoneTitle}
           onChange={onChange}
           className="border px-3 py-2 w-full rounded"
         />
@@ -110,7 +96,7 @@ export default function ZoneForm({
         <input
           type="number"
           name="ZoneStatus"
-          value={zoneForm.ZoneStatus ?? 1}
+          value={zoneForm.ZoneStatus}
           onChange={onChange}
           className="border px-3 py-2 w-full rounded"
           min={0}
@@ -122,7 +108,7 @@ export default function ZoneForm({
         <AutoComplete
           placeholder="Select nodes"
           options={NodeDropDown}
-          value={selectedNodes}
+          value={selectedFruits}
           innerClassName="border border-gray-300 rounded-[12px]"
           className="my-3"
           isMulty

@@ -7,8 +7,9 @@ import MapComponent from "@/components/ui/Map";
 import { MapStore } from "@/store/mapStore";
 import NodeForm from "./nodeCrud/Index";
 import ZoneForm from "./zoneCrud/Index";
-import { useCreateNode, useUpdateNode, useDeleteNode  } from "@/hooks/node/node";
+import { useCreateNode, useUpdateNode, useDeleteNode ,useGetNode  } from "@/hooks/node/node";
 import { useUpdateZone, useDeleteZone ,useCreateZone ,useGetZone } from "@/hooks/zone/zone";
+import { point } from "leaflet";
 
 export default function MapIndex() {
   // -----------------------------
@@ -39,9 +40,8 @@ export default function MapIndex() {
 
         const nodes = await nodesRes.json();
         const zones = await zonesRes.json();
-
+        console.log('nodes',nodes)
         // تبدیل nodes به MapPoint
-        
         const mapPointsData: MapPoint[] = nodes.map((n: any) => ({
           id: String(n.Id),
           name: n.Title,
@@ -50,10 +50,9 @@ export default function MapIndex() {
           lat: Number(n.Latitude),
           lng: Number(n.Longitude),
           statusId: Number(n.statusId),
-          LabelId: Number(n.LabelId),
+          LabelId: n.LabelId,
         }));
         setMapPoints(mapPointsData);
-
         // تبدیل zones به ZoneShapeType
         const groupedZones: Record<
           number,
@@ -99,6 +98,7 @@ export default function MapIndex() {
     Latitude: 0,
     Longitude: 0,
     statusId: 1,
+    LabelId:[],
   });
 const [zoneForm, setZoneForm] = useState({
   
@@ -120,62 +120,30 @@ const [zoneForm, setZoneForm] = useState({
 
 
 const { data: zoneData, isLoading: zoneLoading } = useGetZone(selectedZone, {
-  enabled: !!selectedZone,
+  enabled: !!selectedZone, // فقط وقتی selectedZone مقدار دارد
 });
-useEffect(() => {
-  if (zoneData && !zoneLoading) {
-    const ids = (zoneData.selectedNodes || [])
-      .map((c: any) => Number(c.nodeId))
-      .filter(Boolean);
+interface ZoneFormType {
+  ZoneTitle: string;
+  ZoneStatus: number;
+  selectedNodeIds: number[];
+}
+const FinalData: ZoneFormType = zoneData?.[0]
+  ? {
+      ZoneTitle: zoneData[0].title,
+      ZoneStatus: zoneData[0].zoneStatus,
+      selectedNodeIds: zoneData[0].coords,
+    }
+  : {
+      ZoneTitle: "",
+      ZoneStatus: 0,
+      selectedNodeIds: [],
+    };
 
-    setZoneForm({
-      ZoneTitle: zoneData.zoneTitle ?? "",
-      ZoneStatus: Number(zoneData.zoneStatus ?? 1),
-      selectedNodeIds: ids,
-    });
-  }
-}, [zoneData, zoneLoading]);
-
-//  useEffect(() => {
-//    if (zoneData && !zoneLoading) {
-//      setZoneShapes((prev) => {
-//        // اگه زون از قبل وجود داشت، آپدیتش کن
-//        const exists = prev.some((z) => z.zoneId === zoneData.zoneId);
-//        if (exists) {
-//          return prev.map((z) =>
-//            z.zoneId === zoneData.zoneId
-//              ? {
-//                  ...z,
-//                  title: zoneData.title,
-//                  status: zoneData.status,
-//                  coords: zoneData.coords || [],
-//                }
-//              : z
-//          );
-//        } else {
-//          // در غیر این صورت، زون جدید رو اضافه کن
-//          return [
-//            ...prev,
-//            {
-//              zoneId: zoneData.zoneId,
-//              title: zoneData.title,
-//              status: zoneData.status,
-//              coords: zoneData.coords || [],
-//            },
-//          ];
-//        }
-//      });
-//    }
-//  }, [zoneData, zoneLoading]);
-
-  // -----------------------------
-  // Node handlers
-  // -----------------------------
+console.log("FinalData", FinalData);
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  console.log("zoneFormInGeneral", zoneForm);
   const handleCreateSave = () => {
     createNode.mutate(form, {
       onSuccess: (created) => {
@@ -189,6 +157,7 @@ useEffect(() => {
             lat: Number(created.Latitude),
             lng: Number(created.Longitude),
             statusId: Number(created.statusId),
+            LabelId:created.LabelId
           },
         ]);
         setOpenPanel(false);
@@ -214,6 +183,7 @@ useEffect(() => {
                     lng: Number(updated.Longitude),
                     statusId: Number(updated.statusId),
                     status: updated.statusId === 1 ? "active" : "inactive",
+                    LabelId: updated.LabelId,
                   }
                 : p
             )
@@ -244,18 +214,15 @@ useEffect(() => {
     setZoneForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  console.log("selectedZone", selectedZone);
   const handleZoneSave = () => {
-    debugger
-
     const dataToSave = {
       ZoneTitle: zoneForm.ZoneTitle,
       ZoneStatus: zoneForm.ZoneStatus,
       NodeIds: zoneForm.selectedNodeIds,
     };
-   console.log("dataToSave", dataToSave);
-  if (!selectedZone) {
-    createZone.mutate(dataToSave, {
+
+    if (!selected) {
+      createZone.mutate(dataToSave, {
         onSuccess: (res) => {
           console.log("✅ Zone created:", res);
           setOpenZonePanel(false);
@@ -274,9 +241,11 @@ useEffect(() => {
       });
       return;
     }
-  updateZone.mutate(
-    { id: Number(selectedZone), data: dataToSave },
-    {
+
+
+    updateZone.mutate(
+      { id: selected.id, data: dataToSave },
+      {
         onSuccess: (updated) => {
           setMapPoints((prev) =>
             prev.map((z) =>
@@ -306,6 +275,7 @@ useEffect(() => {
       Latitude: lat,
       Longitude: lng,
       statusId: 1,
+      LabelId: [],
     });
     setOpenPanel(true); 
   };
@@ -335,7 +305,8 @@ useEffect(() => {
       Title: p.name,
       Latitude: p.lat,
       Longitude: p.lng,
-      statusId:  (p.status === "active" ? 1 : 0),
+      statusId: p.status === "active" ? 1 : 0,
+      LabelId: p.LabelId,
     });
     setOpenPanel(true);
   };
@@ -386,7 +357,7 @@ useEffect(() => {
               onClick={() =>
                 setMode(mode === "createNode" ? "view" : "createNode")
               }
-              className="text-white font-semibold bg-[#FF7959] px-5 py-2 rounded-[12px]"
+              className="text-white font-semibold bg-[#FF7959] px-5 py-2 rounded-xl"
             >
               ایجاد نود
             </button>
@@ -394,7 +365,7 @@ useEffect(() => {
               onClick={() =>
                 setMode(mode === "defineZone" ? "view" : "defineZone")
               }
-              className="text-white font-semibold bg-[#FF7959] px-5 py-2 rounded-[12px]"
+              className="text-white font-semibold bg-foreground px-5 py-2 rounded-[12px]"
             >
               ایجاد زون
             </button>
@@ -464,6 +435,7 @@ useEffect(() => {
           >
             <NodeForm
               form={form}
+              setForm={setForm}
               onChange={handleChange}
               creatingNode={creatingNode}
             />
@@ -494,7 +466,7 @@ useEffect(() => {
             }
           >
             <ZoneForm
-              zoneForm={zoneForm}
+              zoneForm={FinalData}
               onChange={handleZoneChange}
               onFormChange={(updatedForm) => setZoneForm(updatedForm)}
             />

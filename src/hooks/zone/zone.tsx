@@ -6,10 +6,10 @@ interface ZoneCoord {
   lat: number;
 }
 
-interface ZoneResponse {
-  zoneTitle: string;
+export interface ZoneResponse {
+  title: string;
   zoneStatus: number;
-  selectedNodes: ZoneCoord[];
+  coords: number[];
 }
 
 interface ZoneData {
@@ -21,7 +21,7 @@ interface ZoneData {
 
 
 export function useGetZone(id?: number, options?: { enabled?: boolean }) {
-  return useQuery<ZoneResponse>({
+  return useQuery<ZoneResponse[]>({
     queryKey: ["zone", id],
     queryFn: async () => {
       const res = await fetch(`/api/zone/${id}`);
@@ -33,7 +33,6 @@ export function useGetZone(id?: number, options?: { enabled?: boolean }) {
 }
 
 
-// ✏️ PUT: بروزرسانی زون
 export function useUpdateZone() {
   const queryClient = useQueryClient();
   return useMutation({

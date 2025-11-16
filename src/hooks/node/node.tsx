@@ -5,10 +5,30 @@ export interface NodeData {
   Latitude: number;
   Longitude: number;
   statusId: number;
-}
+  nodeLabels?: number[];
+} 
+
 
 export interface MapNode extends NodeData {
   Id: string;
+}
+
+// --------------------
+// Fetch Single Node by ID
+// --------------------
+export function useGetNode(id: string | number | null |undefined) {
+  return useQuery<MapNode & { nodeLabelId?: number }, Error>({
+    queryKey: ["node", id],
+    queryFn: async () => {
+      if (!id) throw new Error("Invalid id");
+
+      const res = await fetch(`/api/node/${id}`);
+      if (!res.ok) throw new Error("Failed to fetch node");
+      return res.json();
+    },
+    enabled: Boolean(id), // فقط وقتی id وجود دارد اجرا شود
+    staleTime: 1000 * 60 * 2,
+  });
 }
 
 // --------------------
@@ -29,6 +49,7 @@ export function useNodes() {
 // --------------------
 // Create Node
 // --------------------
+
 export function useCreateNode() {
   const queryClient = useQueryClient();
 
@@ -44,12 +65,10 @@ export function useCreateNode() {
       return result;
     },
     onSuccess: () => {
-      // رفرش داده‌های نود
       queryClient.invalidateQueries({ queryKey: ["nodes"] });
     },
   });
 }
-
 // --------------------
 // Update Node
 // --------------------

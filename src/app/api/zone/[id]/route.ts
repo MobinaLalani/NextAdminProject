@@ -23,11 +23,13 @@ export async function GET(
         N.Title AS NodeTitle,
         N.Latitude,
         N.Longitude,
-        N.StatusId AS NodeStatus
+        N.StatusId AS NodeStatus ,
+		NL.LabelId as nodeLabelId
       FROM [dbo].[MapZoneNode] ZN
       JOIN [dbo].[MapZone] Z ON Z.Id = ZN.ZoneId
       JOIN [dbo].[MapNode] N ON N.Id = ZN.NodeId
-      WHERE ZN.ZoneId = @Id
+	  join MapNodeLabel NL on n.Id= nl.NodeId
+      WHERE ZN.ZoneId =9
       ORDER BY ZN.Id;
     `;
 

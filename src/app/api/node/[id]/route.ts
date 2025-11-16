@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getConnection } from "@/lib/db";
 
-// GET یک نود بر اساس Id
+
 export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
@@ -13,21 +13,36 @@ export async function GET(
     }
 
     const pool = await getConnection();
-    const result = await pool
-      .request()
-      .input("Id", id)
-      .query(`SELECT [Id], [Title], [Latitude], [Longitude], [statusId] FROM [dbo].[MapNode] WHERE [Id] = @Id`);
+
+    const result = await pool.request().input("Id", id).query(`
+        SELECT 
+          n.[Id], n.[Title], n.[Latitude], n.[Longitude], n.[statusId],
+          ISNULL(STRING_AGG(nl.LabelId, ','), '') AS LabelIds
+        FROM [dbo].[MapNode] n
+        LEFT JOIN [dbo].[MapNodeLabel] nl ON n.Id = nl.NodeId
+        WHERE n.Id = @Id
+        GROUP BY n.[Id], n.[Title], n.[Latitude], n.[Longitude], n.[statusId]
+      `);
 
     const row = result.recordset?.[0];
     if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json(row);
+
+    const node = {
+      Id: row.Id,
+      Title: row.Title,
+      Latitude: row.Latitude,
+      Longitude: row.Longitude,
+      statusId: row.statusId,
+      nodeLabels: row.LabelIds ? row.LabelIds.split(",").map(Number) : [],
+    };
+
+    return NextResponse.json(node);
   } catch (err) {
     console.error("API /api/node/[id] GET error:", err);
     return NextResponse.json({ error: "Database error" }, { status: 500 });
   }
 }
 
-// PUT ویرایش نود (به‌صورت partial)
 export async function PUT(
   req: Request,
   { params }: { params: { id: string } }
@@ -39,15 +54,23 @@ export async function PUT(
     }
 
     const body = await req.json();
-    console.log("[PUT /api/node/:id] incoming", { id, body });
-    const { Title = null, Latitude = null, Longitude = null, statusId = null } = body as {
+    const {
+      Title = null,
+      Latitude = null,
+      Longitude = null,
+      statusId = null,
+      nodeLabels,
+    } = body as {
       Title?: string | null;
       Latitude?: number | null;
       Longitude?: number | null;
       statusId?: number | null;
+      nodeLabels?: number[]; // ← اضافه شد
     };
- 
+
     const pool = await getConnection();
+
+    // 1️⃣ Update Node
     const updateQuery = `
       UPDATE [dbo].[MapNode]
       SET
@@ -70,11 +93,54 @@ export async function PUT(
     if (result.rowsAffected[0] === 0)
       return NextResponse.json({ error: "Node not found" }, { status: 404 });
 
-    const fetchQuery = `SELECT [Id], [Title], [Latitude], [Longitude], [statusId] FROM [dbo].[MapNode] WHERE [Id] = @Id`;
+    // 2️⃣ Update Node Labels
+    if (Array.isArray(nodeLabels)) {
+      // حذف رکوردهای قبلی
+      await pool.request().input("Id", id).query(`
+        DELETE FROM [dbo].[MapNodeLabel] WHERE NodeId = @Id
+      `);
+
+      if (nodeLabels.length > 0) {
+        const insertLabels = nodeLabels
+          .map((labelId) => `(${id}, ${labelId})`)
+          .join(", ");
+        const queryLabels = `
+          INSERT INTO [dbo].[MapNodeLabel] (NodeId, LabelId)
+          VALUES ${insertLabels}
+        `;
+        await pool.request().query(queryLabels);
+      }
+    }
+
+    // 3️⃣ واکشی Node و nodeLabels به‌روز
+    const fetchQuery = `
+      SELECT 
+        n.[Id], n.[Title], n.[Latitude], n.[Longitude], n.[statusId],
+        ISNULL(STRING_AGG(nl.LabelId, ','), '') AS LabelIds
+      FROM [dbo].[MapNode] n
+      LEFT JOIN [dbo].[MapNodeLabel] nl ON n.Id = nl.NodeId
+      WHERE n.Id = @Id
+      GROUP BY n.[Id], n.[Title], n.[Latitude], n.[Longitude], n.[statusId]
+    `;
+
     const updatedRes = await pool.request().input("Id", id).query(fetchQuery);
-    const updated = updatedRes.recordset?.[0];
-    console.log("[PUT /api/node/:id] updated", updated);
-    return NextResponse.json(updated);
+    const row = updatedRes.recordset?.[0];
+    if (!row)
+      return NextResponse.json(
+        { error: "Node not found after update" },
+        { status: 404 }
+      );
+
+    const updatedNode = {
+      Id: row.Id,
+      Title: row.Title,
+      Latitude: row.Latitude,
+      Longitude: row.Longitude,
+      statusId: row.statusId,
+      nodeLabels: row.LabelIds ? row.LabelIds.split(",").map(Number) : [],
+    };
+
+    return NextResponse.json(updatedNode);
   } catch (err) {
     console.error("API /api/node/[id] PUT error:", err);
     return NextResponse.json({ error: "Update failed" }, { status: 500 });

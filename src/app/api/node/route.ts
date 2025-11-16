@@ -23,28 +23,63 @@ export async function GET() {
 // 🟡 CREATE - افزودن نود جدید و برگرداندن رکورد ساخته‌شده
 export async function POST(req: Request) {
   try {
-    const { Title, Latitude, Longitude, statusId } = await req.json();
+    const { Title, Latitude, Longitude, statusId, nodeLabels } =
+      await req.json();
+
     if (!Title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
+    if (!Array.isArray(nodeLabels)) {
+      return NextResponse.json(
+        { error: "nodeLabels must be an array" },
+        { status: 400 }
+      );
+    }
+
     const pool = await getConnection();
-    const query = `
+
+    // 1️⃣ Insert Node
+    const queryNode = `
       INSERT INTO [dbo].[MapNode] ([Title], [Latitude], [Longitude], [statusId])
       OUTPUT INSERTED.[Id], INSERTED.[Title], INSERTED.[Latitude], INSERTED.[Longitude], INSERTED.[statusId]
       VALUES (@Title, @Latitude, @Longitude, @statusId)
     `;
 
-    const result = await pool
+    const resultNode = await pool
       .request()
       .input("Title", Title)
       .input("Latitude", Latitude)
       .input("Longitude", Longitude)
       .input("statusId", statusId)
-      .query(query);
+      .query(queryNode);
 
-    const created = result.recordset?.[0];
-    return NextResponse.json(created, { status: 201 });
+    const createdNode = resultNode.recordset?.[0];
+
+    if (!createdNode) {
+      return NextResponse.json(
+        { error: "Node creation failed" },
+        { status: 500 }
+      );
+    }
+
+    const nodeId = createdNode.Id;
+
+    // 2️⃣ Insert Node Labels
+    if (nodeLabels.length > 0) {
+      const insertLabels = nodeLabels
+        .map((labelId: number) => `(${nodeId}, ${labelId})`)
+        .join(", ");
+
+      const queryLabels = `
+        INSERT INTO [dbo].[MapNodeLabel] (NodeId, LabelId)
+        VALUES ${insertLabels}
+      `;
+
+      await pool.request().query(queryLabels);
+    }
+
+    return NextResponse.json({ ...createdNode, nodeLabels }, { status: 201 });
   } catch (err) {
     console.error("API /api/node POST error:", err);
     return NextResponse.json({ error: "Insert failed" }, { status: 500 });
