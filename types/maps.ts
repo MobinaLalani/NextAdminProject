@@ -1,6 +1,6 @@
 
 export type MarkerCategory = "taxi_terminal" | "microhub" | "node";
-export type PointStatus = "active" | "inactive";
+export type PointStatus = "active" | "inactive" | number;
 
 export interface MapPoint {
   id: string;
@@ -8,7 +8,7 @@ export interface MapPoint {
   category: MarkerCategory;
   status: PointStatus;
   lat: number;
-  LabelId: [];
+  LabelId?: number;
   lng: number;
 }
 

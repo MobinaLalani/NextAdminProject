@@ -18,19 +18,10 @@ export function renderMarkers({
 }: RenderMarkersParams) {
   if (!map || !mapboxgl) return;
 
-  // ░░ پاک کردن مارکرهای قبلی ░░
   document.querySelectorAll(".custom-marker").forEach((el) => el.remove());
 
   points.forEach((point) => {
-    console.log("Rendering marker → ", {
-      name: point.name,
-      lat: point.lat,
-      lng: point.lng,
-      LabelId: point.LabelId,
-      status: point.status,
-    });
-
-    // جلوگیری از ایجاد مارکر با مختصات ناقص
+    console.log("point", point);
     if (point.lat == null || point.lng == null) {
       console.warn("❌ lat/lng ناقص است:", point);
       return;
@@ -39,28 +30,31 @@ export function renderMarkers({
     const markerEl = document.createElement("div");
     markerEl.className = "custom-marker";
 
-    const isActive = point.status === "active";
+    const statusNumeric = Number(point.statusId ?? (point.status === "active" ? 1 : point.status === "inactive" ? 0 : point.status));
+    const isActive = statusNumeric === 1;
 
-    // ░░ تعیین رنگ بر اساس LabelId ░░
-    let colorClass = "bg-gray-500"; // برای غیرفعال
+    
+    let colorClass = "bg-gray-500"; 
     if (isActive) {
-      if (point.LabelId === 1) colorClass = "bg-yellow-500"; // تاکسی
-      else if (point.LabelId === 2) colorClass = "bg-blue-600"; // میکروهاب
-      else if (point.LabelId === 3) colorClass = "bg-red-600"; // نود
+      const labelId = Number(point.LabelId ?? point.labelId);
+      if (labelId === 1) colorClass = "bg-yellow-500";  
+      else if (labelId === 2) colorClass = "bg-blue-600"; 
+      else if (labelId === 3) colorClass = "bg-red-600"; 
+      else colorClass = "bg-green-500";
     }
 
-    const labelBgClass = isActive
-      ? "bg-emerald-100 text-emerald-800"
-      : "bg-gray-500 text-white";
-
-    // ░░ تعیین آیکون بر اساس LabelId (دیگر category مهم نیست) ░░
+    const labelBgClass =
+      isActive
+        ? "bg-emerald-100 text-emerald-800"
+        : "bg-gray-500 text-white";
+ 
     let iconSrc = "/icons/microhubIcone.svg";
-    if (point.LabelId === 1) iconSrc = "/icons/TaxiIcon.svg";
-    else if (point.LabelId === 2) iconSrc = "/icons/microhubIcone.svg";
-    else if (point.LabelId === 3) iconSrc = "/icons/nodeIcon.svg";
+    const labelId = Number(point.LabelId ?? point.labelId);
+    if (labelId === 1) iconSrc = "/icons/TaxiIcon.svg";
+    else if (labelId === 2) iconSrc = "/icons/microhubIcone.svg";
+    else if (labelId === 3) iconSrc = "/icons/nodeIcon.svg";
 
-    // ░░ HTML مارکر ░░
-    markerEl.innerHTML = `
+    markerEl.innerHTML =`
       <div class="flex flex-col items-center cursor-pointer">
         <div class="mb-1 bg-white px-2 py-1 rounded-md shadow text-xs font-medium">
           <div class="flex items-center gap-1.5">
@@ -77,7 +71,6 @@ export function renderMarkers({
       </div>
     `;
 
-    // ░░ ساخت مارکر Mapbox ░░
     new mapboxgl.Marker({
       element: markerEl,
       anchor: "bottom",
@@ -85,7 +78,6 @@ export function renderMarkers({
       .setLngLat([Number(point.lng), Number(point.lat)])
       .addTo(map);
 
-    // ░░ کلیک مارکر ░░
     markerEl.addEventListener("click", () => {
       if (mode === "defineZone") {
         if (isActive) {

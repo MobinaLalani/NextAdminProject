@@ -2,14 +2,13 @@
 
 import React, { useState  ,useEffect} from "react";3
 import { MapPoint } from "../../../types/maps";
-import Drawer from "@/components/ui/Drawer";
+import Sidebar from "@/components/layout/mapLayout/sidebar/sidebar";
 import MapComponent from "@/components/ui/Map";
 import { MapStore } from "@/store/mapStore";
 import NodeForm from "./nodeCrud/Index";
 import ZoneForm from "./zoneCrud/Index";
 import { useCreateNode, useUpdateNode, useDeleteNode ,useGetNode  } from "@/hooks/node/node";
 import { useUpdateZone, useDeleteZone ,useCreateZone ,useGetZone } from "@/hooks/zone/zone";
-import { point } from "leaflet";
 
 export default function MapIndex() {
   // -----------------------------
@@ -19,16 +18,14 @@ export default function MapIndex() {
   const [creatingNode, setCreatingNode] = useState(false);
   const [openZonePanel, setOpenZonePanel] = useState(false);
   const [selected, setSelected] = useState<any>(null);
-  const [selectedNode ,setSelectedNode]=useState<string>();
-  const [selectedZone ,setSelectedZone]= useState();
+  const [selectedNode, setSelectedNode] = useState<string>();
+  const [selectedZone, setSelectedZone] = useState();
   const [mapPoints, setMapPoints] = useState<MapPoint[]>([]);
   const [zoneShapes, setZoneShapes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { mode, setMode  , zoneNodes} = MapStore();
+  const { mode, setMode, zoneNodes } = MapStore();
   const [error, setError] = useState<string | null>(null);
 
-
-  // بارگذاری اولیه
   useEffect(() => {
     const load = async () => {
       try {
@@ -41,13 +38,13 @@ export default function MapIndex() {
 
         const nodes = await nodesRes.json();
         const zones = await zonesRes.json();
-        console.log('nodes',nodes)
+
         // تبدیل nodes به MapPoint
         const mapPointsData: MapPoint[] = nodes.map((n: any) => ({
           id: String(n.Id),
           name: n.Title,
           category: "node",
-          status: n.statusId === 1 ? "active" : "inactive",
+          status: n.statusId ,
           lat: Number(n.Latitude),
           lng: Number(n.Longitude),
           statusId: Number(n.statusId),
@@ -74,14 +71,14 @@ export default function MapIndex() {
           ]);
         });
 
-        const zoneShapesData: any[] = Object.entries(
-          groupedZones
-        ).map(([id, v]) => ({
-          zoneId: Number(id),
-          title: v.title,
-          status: v.status,
-          coords: v.coords,
-        }));
+        const zoneShapesData: any[] = Object.entries(groupedZones).map(
+          ([id, v]) => ({
+            zoneId: Number(id),
+            title: v.title,
+            status: v.status,
+            coords: v.coords,
+          })
+        );
 
         setZoneShapes(zoneShapesData);
       } catch (err: any) {
@@ -101,13 +98,11 @@ export default function MapIndex() {
     statusId: 1,
     nodeLabels: [] as number[],
   });
-const [zoneForm, setZoneForm] = useState({
-  
-  ZoneTitle: "",
-  ZoneStatus: 1,
-  selectedNodeIds: [] as number[] | undefined, // اضافه شد
-});
-
+  const [zoneForm, setZoneForm] = useState({
+    ZoneTitle: "",
+    ZoneStatus: 1,
+    selectedNodeIds: [] as number[] | undefined, // اضافه شد
+  });
 
   // -----------------------------
   // React Query mutations
@@ -119,64 +114,65 @@ const [zoneForm, setZoneForm] = useState({
   const deleteZone = useDeleteZone();
   const createZone = useCreateZone();
 
-const { data: NodeData, isLoading:nodeLoading } = useGetNode(selectedNode
-);
+  const { data: NodeData, isLoading: nodeLoading } = useGetNode(selectedNode);
 
-console.log("NodeData", NodeData);
-const { data: zoneData, isLoading: zoneLoading } = useGetZone(selectedZone, {
-  enabled: !!selectedZone, // فقط وقتی selectedZone مقدار دارد
-});
-useEffect(() => {
-  if (!NodeData || !selected) return;
-
-  setForm({
-    Title: selected.name,
-    Latitude: selected.lat,
-    Longitude: selected.lng,
-    statusId: selected.status === "active" ? 1 : 0,
-    nodeLabels: NodeData.nodeLabels ?? [],
+  const { data: zoneData, isLoading: zoneLoading } = useGetZone(selectedZone, {
+    enabled: !!selectedZone, // فقط وقتی selectedZone مقدار دارد
   });
-}, [NodeData, selected]);
+  useEffect(() => {
+    if (!NodeData || !selected) return;
 
-interface ZoneFormType {
-  ZoneTitle: string;
-  ZoneStatus: number;
-  selectedNodeIds: number[];
-}
-const FinalData: ZoneFormType = zoneData?.[0]
-  ? {
-      ZoneTitle: zoneData[0].title,
-      ZoneStatus: zoneData[0].zoneStatus,
-      selectedNodeIds: zoneData[0].coords,
-    }
-  : {
-      ZoneTitle: "",
-      ZoneStatus: 0,
-      selectedNodeIds: [],
-    };
+    setForm({
+      Title: selected.name,
+      Latitude: selected.lat,
+      Longitude: selected.lng,
+      statusId: Number((selected as any).statusId ?? (selected as any).status ?? NodeData.statusId ?? 1),
+      nodeLabels: NodeData.nodeLabels ?? [],
+    });
+  }, [NodeData, selected]);
 
-console.log("FinalData", FinalData);
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  interface ZoneFormType {
+    ZoneTitle: string;
+    ZoneStatus: number;
+    selectedNodeIds: number[];
+  }
+  const FinalData: ZoneFormType = zoneData?.[0]
+    ? {
+        ZoneTitle: zoneData[0].title,
+        ZoneStatus: zoneData[0].zoneStatus,
+        selectedNodeIds: zoneData[0].coords,
+      }
+    : {
+        ZoneTitle: "",
+        ZoneStatus: 0,
+        selectedNodeIds: [],
+      };
+
+
+
+  const handleChange = (field: string, value: string | number) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCreateSave = () => {
     createNode.mutate(form, {
       onSuccess: (created) => {
+        console.log("created", created);
         setMapPoints((prev) => [
           ...prev,
           {
             id: String(created.Id),
             name: created.Title,
             category: "node",
-            status: created.statusId === 1 ? "active" : "inactive",
+            status: created.statusId,
             lat: Number(created.Latitude),
             lng: Number(created.Longitude),
             statusId: Number(created.statusId),
-            LabelId:created.LabelId
+            LabelId: (form.nodeLabels && form.nodeLabels.length > 0) ? Number(form.nodeLabels[0]) : undefined,
           },
         ]);
         setOpenPanel(false);
+        setMode("view");
         setCreatingNode(false);
       },
       onError: (err: any) => alert(err.message || "خطا در ایجاد نود"),
@@ -198,8 +194,8 @@ console.log("FinalData", FinalData);
                     lat: Number(updated.Latitude),
                     lng: Number(updated.Longitude),
                     statusId: Number(updated.statusId),
-                    status: updated.statusId === 1 ? "active" : "inactive",
-                    LabelId: updated.LabelId,
+                    status: Number(updated.statusId),
+                    LabelId: (updated.nodeLabels && updated.nodeLabels.length > 0) ? Number(updated.nodeLabels[0]) : undefined,
                   }
                 : p
             )
@@ -240,7 +236,6 @@ console.log("FinalData", FinalData);
     if (!selected) {
       createZone.mutate(dataToSave, {
         onSuccess: (res) => {
-          console.log("✅ Zone created:", res);
           setOpenZonePanel(false);
           // آپدیت لیست زون‌ها (اختیاری)
           setZoneShapes((prev) => [
@@ -257,7 +252,6 @@ console.log("FinalData", FinalData);
       });
       return;
     }
-
 
     updateZone.mutate(
       { id: selected.id, data: dataToSave },
@@ -285,7 +279,7 @@ console.log("FinalData", FinalData);
     lng: number;
   }) => {
     setCreatingNode(true);
-    setSelected(null); 
+    setSelected(null);
     setForm({
       Title: "",
       Latitude: lat,
@@ -293,7 +287,7 @@ console.log("FinalData", FinalData);
       statusId: 1,
       nodeLabels: [],
     });
-    setOpenPanel(true); 
+    setOpenPanel(true);
   };
 
   const handleZoneDelete = () => {
@@ -308,27 +302,26 @@ console.log("FinalData", FinalData);
     });
   };
 
-const handlePointClick = (p: MapPoint) => {
-  if (creatingNode) return;
+  const handlePointClick = (p: MapPoint) => {
+    if (creatingNode) return;
 
-  if (openPanel) {
-    setOpenPanel(false);
-    setSelected(null);
-    return;
-  }
+    if (openPanel) {
+      setOpenPanel(false);
+      setSelected(null);
+      return;
+    }
 
-  setSelected(p);
-  setSelectedNode(p.id); // این باعث میشه ریکوئست زده بشه
-  setOpenPanel(true);
-};
+    setSelected(p);
+    setSelectedNode(p.id);
+    setOpenPanel(true);
+  };
 
   const handleZoneClick = (info: {
     index: number;
     coordinates: [number, number][];
-  }) => {     
+  }) => {
     const idx = info.index;
-     console.log("zoneShapes", zoneShapes[idx].zoneId);
-     setSelectedZone(zoneShapes[idx].zoneId)
+    setSelectedZone(zoneShapes[idx].zoneId);
 
     setOpenZonePanel(true);
   };
@@ -373,7 +366,7 @@ const handlePointClick = (p: MapPoint) => {
             onZoneClick={handleZoneClick}
             onCreateNodeRequest={handleCreateNodeRequest}
           />
-          <Drawer
+          <Sidebar
             open={openPanel}
             title={creatingNode ? "ایجاد نود" : "ویرایش نود"}
             onClose={() => {
@@ -426,10 +419,10 @@ const handlePointClick = (p: MapPoint) => {
               onChange={handleChange}
               creatingNode={creatingNode}
             />
-          </Drawer>
+          </Sidebar>
 
           {/* Drawer زون */}
-          <Drawer
+          <Sidebar
             open={openZonePanel}
             title="ویرایش زون"
             onClose={() => setOpenZonePanel(false)}
@@ -457,7 +450,7 @@ const handlePointClick = (p: MapPoint) => {
               onChange={handleZoneChange}
               onFormChange={(updatedForm) => setZoneForm(updatedForm)}
             />
-          </Drawer>
+          </Sidebar>
         </>
       )}
 

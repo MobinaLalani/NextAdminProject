@@ -64,11 +64,14 @@ export function useCreateNode() {
       if (!res.ok) throw new Error(result.error || "Failed to create node");
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (newNode) => {
       queryClient.invalidateQueries({ queryKey: ["nodes"] });
+      queryClient.setQueryData(["node", newNode.Id], newNode);
     },
   });
 }
+
+
 // --------------------
 // Update Node
 // --------------------

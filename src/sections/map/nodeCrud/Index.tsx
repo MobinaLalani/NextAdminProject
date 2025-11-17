@@ -1,8 +1,8 @@
-// components/map/NodeForm.tsx
 "use client";
 
 import React from "react";
 import AutoComplete from "@/components/ui/AutoComplete";
+import TextField from "@/components/ui/TextField"; // مسیر درست TextField
 import { NodeLabel } from "../../../../types/enums/node";
 
 interface NodeFormProps {
@@ -11,9 +11,9 @@ interface NodeFormProps {
     Latitude: number;
     Longitude: number;
     statusId: number;
-    nodeLabels?: number[]; 
+    nodeLabels?: number[];
   };
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (name: string, value: string | number) => void;
   setForm: (form: any) => void;
   creatingNode: boolean;
 }
@@ -24,57 +24,42 @@ export default function NodeForm({
   setForm,
   creatingNode,
 }: NodeFormProps) {
-  console.log("form", form);
   return (
-    <div className="h-[80vh] p-5">
-      <div>
-        <label className="block mb-1">عنوان</label>
-        <input
-          name="Title"
-          value={form.Title}
-          onChange={onChange}
-          className="border px-3 py-2 w-full rounded"
-        />
-      </div>
+    <div className="h-[80vh] p-5 space-y-4">
+      <TextField
+        label="عنوان"
+        name="Title"
+        placeholder="عنوان را وارد کنید"
+        value={form.Title}
+        onChange={(val) => onChange("Title", val)}
+      />
 
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block mb-1">عرض (Latitude)</label>
-          <input
-            type="number"
-            name="Latitude"
-            value={form.Latitude}
-            onChange={onChange}
-            className="border px-3 py-2 w-full rounded"
-            step="any"
-          />
-        </div>
-
-        <div>
-          <label className="block mb-1">طول (Longitude)</label>
-          <input
-            type="number"
-            name="Longitude"
-            value={form.Longitude}
-            onChange={onChange}
-            className="border px-3 py-2 w-full rounded"
-            step="any"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block mb-1">وضعیت (1 فعال / 0 غیرفعال)</label>
-        <input
+        <TextField
+          label="عرض (Latitude)"
+          name="Latitude"
           type="number"
-          name="statusId"
-          value={form.statusId}
-          onChange={onChange}
-          className="border px-3 py-2 w-full rounded"
-          min={0}
-          max={1}
+          placeholder="مثال: 35.6892"
+          value={form.Latitude}
+          onChange={(val) => onChange("Latitude", Number(val))}
+        />
+        <TextField
+          label="طول (Longitude)"
+          name="Longitude"
+          type="number"
+          placeholder="مثال: 51.3890"
+          value={form.Longitude}
+          onChange={(val) => onChange("Longitude", Number(val))}
         />
       </div>
+
+      <TextField
+        label="وضعیت (1 فعال / 0 غیرفعال)"
+        name="statusId"
+        type="number"
+        value={form.statusId}
+        onChange={(val) => onChange("statusId", Number(val))}
+      />
 
       {/* AutoComplete for Node Labels */}
       <div className="mb-3">

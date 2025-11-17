@@ -19,7 +19,7 @@ export default function MapComponent({
   onZoneClick,
   onCreateNodeRequest,
 }: MapComponentProps) {
- console.log("points", points);
+
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const mapboxglRef = useRef<any>(null);
@@ -166,37 +166,36 @@ export default function MapComponent({
               },
             });
 
-const title = zoneTitles?.[idx] ?? "";
-if (title) {
-  const centroid = polygonCentroid(closedZone);
+        const title = zoneTitles?.[idx] ?? "";
+        if (title) {
+          const centroid = polygonCentroid(closedZone);
 
-  const labelGeoJSON: GeoJSON.Feature<GeoJSON.Point> = {
-    type: "Feature",
-    geometry: { type: "Point", coordinates: centroid },
-    properties: { title },
-  };
+          const labelGeoJSON: GeoJSON.Feature<GeoJSON.Point> = {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: centroid },
+            properties: { title },
+          };
 
-  map.addSource(labelSourceId, { type: "geojson", data: labelGeoJSON });
-  map.addLayer({
-    id: labelLayerId,
-    type: "symbol",
-    source: labelSourceId,
-    layout: {
-      "text-field": ["get", "title"],
-      "text-size": 14,
-      "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-      "text-anchor": "center",
-      "text-allow-overlap": true,
-    },
-    paint: {
-      "text-color": "#065f46",
-      "text-halo-color": "#ffffff",
-      "text-halo-width": 2,
-    },
-  });
-}
+          map.addSource(labelSourceId, { type: "geojson", data: labelGeoJSON });
+          map.addLayer({
+            id: labelLayerId,
+            type: "symbol",
+            source: labelSourceId,
+            layout: {
+              "text-field": ["get", "title"],
+              "text-size": 14,
+              "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+              "text-anchor": "center",
+              "text-allow-overlap": true,
+            },
+            paint: {
+              "text-color": "#065f46",
+              "text-halo-color": "#ffffff",
+              "text-halo-width": 2,
+            },
+          });
+        }
 
-            // رویدادهای hover برای نشانگر دست
             [fillLayerId, lineSourceId].forEach((layerId) => {
               if (map.getLayer(layerId)) {
                 map.on("mouseenter", layerId, () => (map.getCanvas().style.cursor = "pointer"));
