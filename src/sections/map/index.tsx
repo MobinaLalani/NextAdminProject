@@ -99,13 +99,13 @@ export default function MapIndex() {
     Latitude: 0,
     Longitude: 0,
     statusId: 1,
-    LabelId:[],
+    nodeLabels: [] as number[],
   });
 const [zoneForm, setZoneForm] = useState({
   
   ZoneTitle: "",
   ZoneStatus: 1,
-  selectedNodeIds: [] as number[], // اضافه شد
+  selectedNodeIds: [] as number[] | undefined, // اضافه شد
 });
 
 
@@ -126,6 +126,18 @@ console.log("NodeData", NodeData);
 const { data: zoneData, isLoading: zoneLoading } = useGetZone(selectedZone, {
   enabled: !!selectedZone, // فقط وقتی selectedZone مقدار دارد
 });
+useEffect(() => {
+  if (!NodeData || !selected) return;
+
+  setForm({
+    Title: selected.name,
+    Latitude: selected.lat,
+    Longitude: selected.lng,
+    statusId: selected.status === "active" ? 1 : 0,
+    nodeLabels: NodeData.nodeLabels ?? [],
+  });
+}, [NodeData, selected]);
+
 interface ZoneFormType {
   ZoneTitle: string;
   ZoneStatus: number;
@@ -279,7 +291,7 @@ console.log("FinalData", FinalData);
       Latitude: lat,
       Longitude: lng,
       statusId: 1,
-      LabelId: [],
+      nodeLabels: [],
     });
     setOpenPanel(true); 
   };
@@ -296,25 +308,19 @@ console.log("FinalData", FinalData);
     });
   };
 
-  const handlePointClick = (p: MapPoint) => {
-    if (creatingNode) return; 
-    if (openPanel) {
-       setOpenPanel(false);
-      setSelected(null);
-      return;
-    }
+const handlePointClick = (p: MapPoint) => {
+  if (creatingNode) return;
 
-    setSelected(p)
-    setSelectedNode(p?.id);
-    setForm({
-      Title: p.name,
-      Latitude: p.lat,
-      Longitude: p.lng,
-      statusId: p.status === "active" ? 1 : 0,
-      LabelId: p.LabelId,
-    });
-    setOpenPanel(true);
-  };
+  if (openPanel) {
+    setOpenPanel(false);
+    setSelected(null);
+    return;
+  }
+
+  setSelected(p);
+  setSelectedNode(p.id); // این باعث میشه ریکوئست زده بشه
+  setOpenPanel(true);
+};
 
   const handleZoneClick = (info: {
     index: number;
