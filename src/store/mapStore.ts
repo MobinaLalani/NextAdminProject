@@ -19,10 +19,12 @@ export interface MapState {
   mode: "view" | "defineZone" | "createNode";
   zonePoints: MapPoint[];
   setZonePoint: (point: MapPoint) => void;
+  selectedZoneId: number | string | null;
+  setSelectedZoneId: (selectedZoneId: string | number | null) => void;
   clearZonePoints: () => void;
   setPoints: (points: MapPoint[]) => void;
   setZoneNodes: (nodes: MapPoint[]) => void;
-  
+
   addNode: (node: MapPoint) => void;
   setMode: (mode: "view" | "defineZone" | "createNode") => void;
 }
@@ -36,6 +38,9 @@ export const MapStore = create<MapState>((set) => ({
   mode: "view",
   zonePoints: [],
 
+  selectedZoneId: null,
+  setSelectedZoneId: (selectedZoneId) => set({ selectedZoneId }),
+  
   setZonePoint: (point) =>
     set((state) => ({ zonePoints: [...state.zonePoints, point] })),
 
@@ -48,7 +53,8 @@ export const MapStore = create<MapState>((set) => ({
   addNode: (node) =>
     set((state) => {
       const exists = state.zoneNodes.some((n) => n.id === node.id);
-      if (exists) {        return { zoneNodes: state.zoneNodes.filter((n) => n.id !== node.id) };
+      if (exists) {
+        return { zoneNodes: state.zoneNodes.filter((n) => n.id !== node.id) };
       } else {
         return { zoneNodes: [...state.zoneNodes, node] };
       }

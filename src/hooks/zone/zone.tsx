@@ -7,10 +7,13 @@ interface ZoneCoord {
 }
 
 export interface ZoneResponse {
+  ZoneId: number; // 👈 جدید
   ZoneTitle: string;
   ZoneStatus: number;
-  selectedNodeIds: number[];
+  selectedNodeIds:
+    [];
 }
+
 
 interface ZoneData {
   ZoneTitle: string;
@@ -36,7 +39,7 @@ export function useGetZone(id?: number, options?: { enabled?: boolean }) {
 export function useUpdateZone() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: ZoneFormType }) => {
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
       const res = await fetch(`/api/zone/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -44,7 +47,7 @@ export function useUpdateZone() {
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to update zone");
-      return result;
+      return result.zone ?? result;
     },
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["zones"] });

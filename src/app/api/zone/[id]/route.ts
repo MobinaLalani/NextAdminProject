@@ -67,6 +67,7 @@ export async function PUT(
 ) {
   try {
     const id = Number(params.id);
+    console.log('id',id)
     if (Number.isNaN(id)) {
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
