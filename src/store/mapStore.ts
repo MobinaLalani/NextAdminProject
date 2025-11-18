@@ -22,6 +22,7 @@ export interface MapState {
   clearZonePoints: () => void;
   setPoints: (points: MapPoint[]) => void;
   setZoneNodes: (nodes: MapPoint[]) => void;
+  
   addNode: (node: MapPoint) => void;
   setMode: (mode: "view" | "defineZone" | "createNode") => void;
 }
