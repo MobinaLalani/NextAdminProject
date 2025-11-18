@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getConnection } from "@/lib/db";
 import sql from "mssql";
 
-// 🟢 READ - گرفتن لیست نودها
+
 export async function GET() {
   try {
     const pool = await getConnection();
@@ -30,7 +30,7 @@ export async function GET() {
   }
 }
 
-// 🟡 CREATE - افزودن زون و نودهای مرتبط
+
 export async function POST(req: Request) {
   try {
     const { ZoneTitle, ZoneStatus, NodeIds } = await req.json();
@@ -51,15 +51,13 @@ export async function POST(req: Request) {
 
     const pool = await getConnection();
 
-    // -----------------------------
-    // مرحله 1: درج رکورد در MapZone و گرفتن Id
-    // -----------------------------
+ 
     const insertZoneQuery = `
       INSERT INTO [dbo].[MapZone] ([Title], [StatusId])
       OUTPUT INSERTED.[Id], INSERTED.[Title], INSERTED.[StatusId]
       VALUES (@Title, @StatusId)
     `;
-    // نام پارامترها باید دقیقاً با نام‌های استفاده شده در کوئری (@Title, @StatusId) هم‌خوانی داشته باشند
+
     const zoneResult = await pool
       .request()
       .input("Title", sql.NVarChar, ZoneTitle)
@@ -73,9 +71,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Failed to create zone" }, { status: 500 });
     }
 
-    // -----------------------------
-    // مرحله 2: درج رکوردهای MapZoneNode (بدون استفاده از TVP برای سادگی و سازگاری)
-    // -----------------------------
     let insertedCount = 0;
     for (const nodeId of NodeIds) {
       const insertNodeRes = await pool

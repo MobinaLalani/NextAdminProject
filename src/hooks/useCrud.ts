@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 
 interface UseCrudOptions<T> {
-  endpoint: string; // آدرس API مثل "/api/node"
-  autoFetch?: boolean; // اگه true باشه، خودش دیتا رو بگیره
+  endpoint: string; 
+  autoFetch?: boolean; 
 }
 
 export function useCrud<T extends { Id: number }>({

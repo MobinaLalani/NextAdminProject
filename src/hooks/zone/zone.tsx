@@ -43,7 +43,7 @@ export function useUpdateZone() {
       const res = await fetch(`/api/zone/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data), // data.selectedNodeIds
+        body: JSON.stringify(data), 
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to update zone");
@@ -56,7 +56,6 @@ export function useUpdateZone() {
   });
 }
 
-// 🗑️ DELETE: حذف زون
 export function useDeleteZone() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -71,7 +70,7 @@ export function useDeleteZone() {
   });
 }
 
-// ➕ POST: ایجاد زون جدید
+
 export function useCreateZone() {
   return useMutation({
     mutationFn: async (data: ZoneData) => {

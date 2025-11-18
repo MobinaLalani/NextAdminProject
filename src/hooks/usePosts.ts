@@ -7,6 +7,6 @@ export const usePosts = () => {
   return useQuery({
     queryKey: ["posts"],
     queryFn: postApi.getPosts,
-    staleTime: 1000 * 60, // 1 دقیقه کش
+    staleTime: 1000 * 60, 
   });
 };

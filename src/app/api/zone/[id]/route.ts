@@ -37,10 +37,10 @@ export async function GET(
       return NextResponse.json({ error: "Zone not found" }, { status: 404 });
     }
 
-    // گرفتن اطلاعات اصلی زون
+
     const { ZoneTitle, ZoneStatus } = result.recordset[0];
 
-    // ساخت selectedNodes
+
     const selectedNodeIds = result.recordset
       .filter((r) => r.Latitude && r.Longitude)
       .map((r) => ({
@@ -88,7 +88,6 @@ export async function PUT(
     try {
       await trx.begin();
 
-      // 1) Update MapZone
       await trx
         .request()
         .input("Id", id)
@@ -100,7 +99,7 @@ export async function PUT(
           WHERE Id = @Id
         `);
 
-      // 2) Update MapZoneNode
+
       if (Array.isArray(selectedNodeIds)) {
         await trx.request().input("ZoneId", id).query(`
           DELETE FROM [dbo].[MapZoneNode] WHERE ZoneId = @ZoneId
@@ -146,12 +145,12 @@ export async function DELETE(
     }
 
     const pool = await getConnection();
-    // پاک کردن وابستگی‌ها ابتدا
+
     await pool
       .request()
       .input("ZoneId", id)
       .query(`DELETE FROM [dbo].[MapZoneNode] WHERE [ZoneId] = @ZoneId`);
-    // سپس خود زون
+
     const del = await pool
       .request()
       .input("Id", id)

@@ -13,9 +13,7 @@ export interface MapNode extends NodeData {
   Id: string;
 }
 
-// --------------------
-// Fetch Single Node by ID
-// --------------------
+
 export function useGetNode(id: string | number | null |undefined) {
   return useQuery<MapNode & { nodeLabelId?: number }, Error>({
     queryKey: ["node", id],
@@ -26,14 +24,12 @@ export function useGetNode(id: string | number | null |undefined) {
       if (!res.ok) throw new Error("Failed to fetch node");
       return res.json();
     },
-    enabled: Boolean(id), // فقط وقتی id وجود دارد اجرا شود
+    enabled: Boolean(id), 
     staleTime: 1000 * 60 * 2,
   });
 }
 
-// --------------------
-// Fetch Nodes
-// --------------------
+
 export function useNodes() {
   return useQuery<MapNode[], Error>({
     queryKey: ["nodes"],
@@ -42,13 +38,10 @@ export function useNodes() {
       if (!res.ok) throw new Error("Failed to fetch nodes");
       return res.json();
     },
-    staleTime: 1000 * 60 * 2, // 2 دقیقه
+    staleTime: 1000 * 60 * 2, 
   });
 }
 
-// --------------------
-// Create Node
-// --------------------
 
 export function useCreateNode() {
   const queryClient = useQueryClient();
@@ -72,9 +65,7 @@ export function useCreateNode() {
 }
 
 
-// --------------------
-// Update Node
-// --------------------
+
 export function useUpdateNode() {
   const queryClient = useQueryClient();
 
@@ -95,9 +86,6 @@ export function useUpdateNode() {
   });
 }
 
-// --------------------
-// Delete Node
-// --------------------
 export function useDeleteNode() {
   const queryClient = useQueryClient();
 
