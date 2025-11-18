@@ -13,27 +13,25 @@ export async function GET(
 
     const pool = await getConnection();
 
-    const query = `
-      SELECT 
-        ZN.Id AS ZoneNodeId,
-        Z.Id AS ZoneId,
-        Z.Title AS ZoneTitle,
-        Z.StatusId AS ZoneStatus,
-        N.Id AS NodeId,
-        N.Title AS NodeTitle,
-        N.Latitude,
-        N.Longitude,
-        N.StatusId AS NodeStatus ,
-		NL.LabelId as nodeLabelId
-      FROM [dbo].[MapZoneNode] ZN
-      JOIN [dbo].[MapZone] Z ON Z.Id = ZN.ZoneId
-      JOIN [dbo].[MapNode] N ON N.Id = ZN.NodeId
-	  join MapNodeLabel NL on n.Id= nl.NodeId
-      WHERE ZN.ZoneId =9
-      ORDER BY ZN.Id;
-    `;
-
-    const result = await pool.request().input("Id", id).query(query);
+    const result = await pool.request()
+      .input("Id", id)
+      .query(`
+        SELECT 
+          ZN.Id AS ZoneNodeId,
+          Z.Id AS ZoneId,
+          Z.Title AS ZoneTitle,
+          Z.StatusId AS ZoneStatus,
+          N.Id AS NodeId,
+          N.Title AS NodeTitle,
+          N.Latitude,
+          N.Longitude,
+          N.StatusId AS NodeStatus
+        FROM [dbo].[MapZoneNode] ZN
+        JOIN [dbo].[MapZone] Z ON Z.Id = ZN.ZoneId
+        JOIN [dbo].[MapNode] N ON N.Id = ZN.NodeId
+        WHERE ZN.ZoneId = @Id
+        ORDER BY ZN.Id;
+      `);
 
     if (result.recordset.length === 0) {
       return NextResponse.json({ error: "Zone not found" }, { status: 404 });
@@ -43,7 +41,7 @@ export async function GET(
     const { ZoneTitle, ZoneStatus } = result.recordset[0];
 
     // ساخت selectedNodes
-    const selectedNodes = result.recordset
+    const selectedNodeIds = result.recordset
       .filter((r) => r.Latitude && r.Longitude)
       .map((r) => ({
         nodeId: r.NodeId,
@@ -52,9 +50,9 @@ export async function GET(
       }));
 
     return NextResponse.json({
-      zoneTitle: ZoneTitle,
-      zoneStatus: ZoneStatus,
-      selectedNodes,
+      ZoneTitle,
+      ZoneStatus,
+      selectedNodeIds,
     });
   } catch (err) {
     console.error("API /api/zone/[id] GET error:", err);
@@ -74,39 +72,65 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { ZoneTitle = null, ZoneStatus = null } = body as {
+    const {
+      ZoneTitle = null,
+      ZoneStatus = null,
+      selectedNodeIds = [],
+    } = body as {
       ZoneTitle?: string | null;
       ZoneStatus?: number | null;
+      selectedNodeIds?: number[];
     };
 
     const pool = await getConnection();
-    const updateQuery = `
-      UPDATE [dbo].[MapZone]
-      SET
-        [Title] = ISNULL(@Title, [Title]),
-        [StatusId] = ISNULL(@StatusId, [StatusId])
-      WHERE [Id] = @Id
-    `;
+    const trx = await pool.transaction();
+    try {
+      await trx.begin();
 
-    const result = await pool
-      .request()
-      .input("Id", id)
-      .input("Title", ZoneTitle)
-      .input("StatusId", ZoneStatus)
-      .query(updateQuery);
+      // 1) Update MapZone
+      await trx
+        .request()
+        .input("Id", id)
+        .input("Title", ZoneTitle)
+        .input("StatusId", ZoneStatus).query(`
+          UPDATE [dbo].[MapZone]
+          SET Title = ISNULL(@Title, Title),
+              StatusId = ISNULL(@StatusId, StatusId)
+          WHERE Id = @Id
+        `);
 
-    if (result.rowsAffected[0] === 0)
-      return NextResponse.json({ error: "Zone not found" }, { status: 404 });
+      // 2) Update MapZoneNode
+      if (Array.isArray(selectedNodeIds)) {
+        await trx.request().input("ZoneId", id).query(`
+          DELETE FROM [dbo].[MapZoneNode] WHERE ZoneId = @ZoneId
+        `);
 
-    const fetchQuery = `SELECT [Id], [Title], [StatusId] FROM [dbo].[MapZone] WHERE [Id] = @Id`;
-    const updatedRes = await pool.request().input("Id", id).query(fetchQuery);
-    const updated = updatedRes.recordset?.[0];
-    return NextResponse.json(updated);
+        for (const nodeId of selectedNodeIds) {
+          await trx.request().input("ZoneId", id).input("NodeId", nodeId)
+            .query(`
+              INSERT INTO [dbo].[MapZoneNode] (ZoneId, NodeId) VALUES (@ZoneId, @NodeId)
+            `);
+        }
+      }
+
+      await trx.commit();
+
+      const updatedRes = await pool.request().input("Id", id).query(`
+        SELECT Id, Title, StatusId FROM [dbo].[MapZone] WHERE Id = @Id
+      `);
+      const updated = updatedRes.recordset?.[0] ?? null;
+
+      return NextResponse.json({ zone: updated });
+    } catch (txErr) {
+      await trx.rollback();
+      return NextResponse.json({ error: "Update failed" }, { status: 500 });
+    }
   } catch (err) {
-    console.error("API /api/zone/[id] PUT error:", err);
     return NextResponse.json({ error: "Update failed" }, { status: 500 });
   }
 }
+
+
 
 
 

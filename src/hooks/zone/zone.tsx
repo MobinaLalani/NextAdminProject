@@ -7,9 +7,9 @@ interface ZoneCoord {
 }
 
 export interface ZoneResponse {
-  title: string;
-  zoneStatus: number;
-  coords: number[];
+  ZoneTitle: string;
+  ZoneStatus: number;
+  selectedNodeIds: number[];
 }
 
 interface ZoneData {
@@ -21,7 +21,7 @@ interface ZoneData {
 
 
 export function useGetZone(id?: number, options?: { enabled?: boolean }) {
-  return useQuery<ZoneResponse[]>({
+  return useQuery<ZoneResponse>({
     queryKey: ["zone", id],
     queryFn: async () => {
       const res = await fetch(`/api/zone/${id}`);
@@ -36,11 +36,11 @@ export function useGetZone(id?: number, options?: { enabled?: boolean }) {
 export function useUpdateZone() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: ZoneData }) => {
+    mutationFn: async ({ id, data }: { id: number; data: ZoneFormType }) => {
       const res = await fetch(`/api/zone/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(data), // data.selectedNodeIds
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to update zone");
@@ -48,7 +48,7 @@ export function useUpdateZone() {
     },
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["zones"] });
-      queryClient.invalidateQueries({ queryKey: ["zone", id] }); // جزئیات زون هم بروز شود
+      queryClient.invalidateQueries({ queryKey: ["zone", id] });
     },
   });
 }

@@ -3,22 +3,23 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { MapStore } from "@/store/mapStore";
-import { MapPoint } from "../../../../types/maps";
+import type { MapPoint } from "@/store/mapStore";
 import AutoComplete, { IDropDown } from "@/components/ui/AutoComplete";
+import TextField from "@/components/ui/TextField";
 import { useNodes } from "../../../hooks/node/node";
 
 interface ZoneFormProps {
   zoneForm: {
     ZoneTitle: string;
     ZoneStatus: number;
-    selectedNodeIds?: any | undefined; // اضافه کردیم
+    selectedNodeIds?: number[];
   };
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (name: string, value: string | number) => void;
   onFormChange?: (updatedForm: {
     ZoneTitle: string;
     ZoneStatus: number;
     selectedNodeIds: number[];
-  }) => void; // callback برای ارسال کامل فرم
+  }) => void;
 }
 
 export default function ZoneForm({
@@ -28,15 +29,14 @@ export default function ZoneForm({
 }: ZoneFormProps) {
   const { data: nodes } = useNodes();
   const { zoneNodes, setZoneNodes } = MapStore();
-  console.log("zoneForm", zoneForm);
   const initialSelected = zoneNodes.map((item: any) => Number(item.id));
-  const [selectedFruits, setSelectedFruits] =
-    useState<number[]>(initialSelected);
+  const [selectedNodes, setSelectedNodes] = useState<number[]>(initialSelected);
 
   useEffect(() => {
-    const ids = zoneNodes.map((item: any) => Number(item.id));
+    const ids = zoneNodes.map((item: any) => Number(item.nodeId));
     const uniqueIds = Array.from(new Set(ids));
-    setSelectedFruits(uniqueIds);
+    setSelectedNodes(uniqueIds);
+
     if (onFormChange) {
       onFormChange({
         ...zoneForm,
@@ -44,7 +44,7 @@ export default function ZoneForm({
       });
     }
   }, [zoneNodes]);
-
+ console.log("zoneForm.ZoneTitle", zoneForm);
   const NodeDropDown: IDropDown[] =
     nodes?.map((item: any) => ({
       value: Number(item.Id),
@@ -52,24 +52,23 @@ export default function ZoneForm({
     })) || [];
 
   const handleNodeChange = (vals: number[]) => {
-    setSelectedFruits(vals);
+    setSelectedNodes(vals);
 
     const newZoneNodes: MapPoint[] =
       nodes
         ?.filter((node: any) => vals.includes(Number(node.Id)))
         .map((node: any) => ({
           id: String(node.Id),
-          lat: node.Latitude,
-          lng: node.Longitude,
-          name: node.Title,
-          category: node.Category || "node",
-          status: node.Status || "active",
-          LabelId: node.LabelId,
+          lat: Number(node.Latitude),
+          lng: Number(node.Longitude),
+          name: String(node.Title),
+          category: (node.Category as any) || "node",
+          status:
+            Number(node.statusId ?? node.Status) === 1 ? "active" : "inactive",
         })) || [];
 
     setZoneNodes(newZoneNodes);
 
-    // ارسال تغییرات به بیرون فرم
     if (onFormChange) {
       onFormChange({
         ...zoneForm,
@@ -79,39 +78,33 @@ export default function ZoneForm({
   };
 
   return (
+    <div className="h-[80vh] p-5 space-y-4">
+      <TextField
+        label="عنوان زون"
+        name="ZoneTitle"
+        placeholder="عنوان زون را وارد کنید"
+        value={zoneForm.ZoneTitle}
+        onChange={(val) => onChange("ZoneTitle", val)}
+      />
 
-    <div className="h-[80vh] p-5">
-      <div className="mb-3">
-        <label className="block mb-1">عنوان زون</label>
-        <input
-          name="ZoneTitle"
-          value={zoneForm.ZoneTitle}
-          onChange={onChange}
-          className="border px-3 py-2 w-full rounded"
-        />
-      </div>
-
-      <div className="mb-3">
-        <label className="block mb-1">وضعیت زون (1 فعال / 0 غیرفعال)</label>
-        <input
-          type="number"
-          name="ZoneStatus"
-          value={zoneForm.ZoneStatus}
-          onChange={onChange}
-          className="border px-3 py-2 w-full rounded"
-          min={0}
-          max={1}
-        />
-      </div>
+      <TextField
+        label="وضعیت زون (1 فعال / 0 غیرفعال)"
+        name="ZoneStatus"
+        type="number"
+        placeholder="0 یا 1"
+        value={zoneForm.ZoneStatus}
+        onChange={(val) => onChange("ZoneStatus", Number(val))}
+      />
 
       <div className="mb-3">
+        <label className="block mb-1">Nodes</label>
         <AutoComplete
           placeholder="Select nodes"
           options={NodeDropDown}
-          value={selectedFruits}
+          value={zoneForm?.selectedNodeIds}
+          isMulty
           innerClassName="border border-gray-300 rounded-[12px]"
           className="my-3"
-          isMulty
           onChange={handleNodeChange}
         />
       </div>

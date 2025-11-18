@@ -1,14 +1,25 @@
 "use client";
 
-import React, { useState  ,useEffect} from "react";3
+import React, { useState, useEffect } from "react";
+3;
 import { MapPoint } from "../../../types/maps";
 import Sidebar from "@/components/layout/mapLayout/sidebar/sidebar";
 import MapComponent from "@/components/ui/Map";
 import { MapStore } from "@/store/mapStore";
 import NodeForm from "./nodeCrud/Index";
 import ZoneForm from "./zoneCrud/Index";
-import { useCreateNode, useUpdateNode, useDeleteNode ,useGetNode  } from "@/hooks/node/node";
-import { useUpdateZone, useDeleteZone ,useCreateZone ,useGetZone } from "@/hooks/zone/zone";
+import {
+  useCreateNode,
+  useUpdateNode,
+  useDeleteNode,
+  useGetNode,
+} from "@/hooks/node/node";
+import {
+  useUpdateZone,
+  useDeleteZone,
+  useCreateZone,
+  useGetZone,
+} from "@/hooks/zone/zone";
 
 export default function MapIndex() {
   // -----------------------------
@@ -44,7 +55,7 @@ export default function MapIndex() {
           id: String(n.Id),
           name: n.Title,
           category: "node",
-          status: n.statusId ,
+          status: n.statusId,
           lat: Number(n.Latitude),
           lng: Number(n.Longitude),
           statusId: Number(n.statusId),
@@ -126,7 +137,12 @@ export default function MapIndex() {
       Title: selected.name,
       Latitude: selected.lat,
       Longitude: selected.lng,
-      statusId: Number((selected as any).statusId ?? (selected as any).status ?? NodeData.statusId ?? 1),
+      statusId: Number(
+        (selected as any).statusId ??
+          (selected as any).status ??
+          NodeData.statusId ??
+          1
+      ),
       nodeLabels: NodeData.nodeLabels ?? [],
     });
   }, [NodeData, selected]);
@@ -136,18 +152,17 @@ export default function MapIndex() {
     ZoneStatus: number;
     selectedNodeIds: number[];
   }
-  const FinalData: ZoneFormType = zoneData?.[0]
-    ? {
-        ZoneTitle: zoneData[0].title,
-        ZoneStatus: zoneData[0].zoneStatus,
-        selectedNodeIds: zoneData[0].coords,
-      }
-    : {
-        ZoneTitle: "",
-        ZoneStatus: 0,
-        selectedNodeIds: [],
-      };
-
+const FinalData: ZoneFormType = zoneData
+  ? {
+      ZoneTitle: zoneData.ZoneTitle,
+      ZoneStatus: zoneData.ZoneStatus,
+      selectedNodeIds: zoneData.selectedNodeIds ?? [],
+    }
+  : {
+      ZoneTitle: "",
+      ZoneStatus: 0,
+      selectedNodeIds: [],
+    };
 
 
   const handleChange = (field: string, value: string | number) => {
@@ -164,11 +179,14 @@ export default function MapIndex() {
             id: String(created.Id),
             name: created.Title,
             category: "node",
-            status: created.statusId,
+            status: Number(created.statusId) === 1 ? "active" : "inactive",
             lat: Number(created.Latitude),
             lng: Number(created.Longitude),
             statusId: Number(created.statusId),
-            LabelId: (form.nodeLabels && form.nodeLabels.length > 0) ? Number(form.nodeLabels[0]) : undefined,
+            LabelId:
+              form.nodeLabels && form.nodeLabels.length > 0
+                ? Number(form.nodeLabels[0])
+                : undefined,
           },
         ]);
         setOpenPanel(false);
@@ -194,8 +212,11 @@ export default function MapIndex() {
                     lat: Number(updated.Latitude),
                     lng: Number(updated.Longitude),
                     statusId: Number(updated.statusId),
-                    status: Number(updated.statusId),
-                    LabelId: (updated.nodeLabels && updated.nodeLabels.length > 0) ? Number(updated.nodeLabels[0]) : undefined,
+                    status: Number(updated.statusId) === 1 ? "active" : "inactive",
+                    LabelId:
+                      updated.nodeLabels && updated.nodeLabels.length > 0
+                        ? Number(updated.nodeLabels[0])
+                        : undefined,
                   }
                 : p
             )
@@ -222,11 +243,14 @@ export default function MapIndex() {
   // -----------------------------
   // Zone handlers
   // -----------------------------
-  const handleZoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setZoneForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleZoneChange = (name: string, value: string | number) => {
+    console.log(name,value);
+    setZoneForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleZoneSave = () => {
+
     const dataToSave = {
       ZoneTitle: zoneForm.ZoneTitle,
       ZoneStatus: zoneForm.ZoneStatus,
@@ -326,6 +350,21 @@ export default function MapIndex() {
     setOpenZonePanel(true);
   };
 
+useEffect(() => {
+  if (!openZonePanel || !zoneData) return;
+   console.log("zoneDatainuseEffect", zoneData?.selectedNodeIds);
+  setZoneForm({
+    ZoneTitle: zoneData.ZoneTitle ?? "",
+    ZoneStatus: Number(zoneData.ZoneStatus ?? 1),
+    selectedNodeIds: 
+      zoneData?.selectedNodeIds.map((item:any)=>item.nodeId)
+     ,
+  });
+}, [zoneData, openZonePanel]);
+
+    
+
+ console.log("zoneFormInIndex", zoneForm);
   return (
     <div>
       {loading && <div>در حال بارگذاری نقشه...</div>}
@@ -446,7 +485,7 @@ export default function MapIndex() {
             }
           >
             <ZoneForm
-              zoneForm={FinalData}
+              zoneForm={zoneForm} 
               onChange={handleZoneChange}
               onFormChange={(updatedForm) => setZoneForm(updatedForm)}
             />
